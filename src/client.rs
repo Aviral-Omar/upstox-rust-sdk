@@ -1,58 +1,73 @@
 use {
-    reqwest::{Client, Method, RequestBuilder, Response, Url},
+    crate::{apis::login::get_authorization_code, constants::WEBDRIVER_SOCKET_ENV},
+    fantoccini::{Client as FantocciniClient, ClientBuilder},
+    reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
-    std::sync::Arc,
-    tokio::sync::{RwLock, RwLockReadGuard},
+    std::{env, sync::Arc},
+    tokio::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard},
 };
 
 pub struct ApiClient {
-    base_url: String,
-    client: Client,
-    token: Arc<RwLock<String>>,
+    pub base_url: String,
+    pub client: ReqwestClient,
+    pub api_key: String,
+    pub token: Arc<RwLock<String>>,
 }
 
 impl ApiClient {
-    pub fn new(base_url: &str, token: String) -> ApiClient {
-        ApiClient {
+    pub async fn new(base_url: &str, api_key: &str) -> ApiClient {
+        let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV).unwrap();
+
+        let api_client: ApiClient = ApiClient {
             base_url: base_url.to_string(),
-            client: Client::new(),
-            token: Arc::new(RwLock::new(token)),
-        }
+            client: ReqwestClient::new(),
+            api_key: api_key.to_string(),
+            token: Arc::new(RwLock::new(String::new())),
+        };
+        let fantoccini_client: FantocciniClient = ClientBuilder::native()
+            .connect(&webdriver_socket)
+            .await
+            .expect("Failed to connect to WebDriver");
+        let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
+            Arc::new(Mutex::new(Some(fantoccini_client)));
+
+        get_authorization_code(&api_client, fantoccini_client.clone()).await;
+
+        close_fantoccini_client(fantoccini_client).await;
+        api_client
     }
 
     pub async fn get(
         &self,
         endpoint: &str,
-        params: Option<&[(&str, &str)]>,
-    ) -> Result<Response, reqwest::Error> {
-        self.request::<()>(Method::GET, endpoint, params, None)
+        auth: bool,
+        params: Option<Vec<(String, String)>>,
+    ) -> Response {
+        self.request::<()>(Method::GET, endpoint, auth, params, None)
             .await
     }
 
-    pub async fn post<T>(
-        &self,
-        endpoint: &str,
-        body: Option<&T>,
-    ) -> Result<Response, reqwest::Error>
+    pub async fn post<T>(&self, endpoint: &str, auth: bool, body: Option<&T>) -> Response
     where
         T: Serialize + ?Sized,
     {
-        self.request(Method::POST, endpoint, None, body).await
+        self.request(Method::POST, endpoint, auth, None, body).await
     }
 
-    pub async fn put<T>(&self, endpoint: &str, body: Option<&T>) -> Result<Response, reqwest::Error>
+    pub async fn put<T>(&self, endpoint: &str, auth: bool, body: Option<&T>) -> Response
     where
         T: Serialize + ?Sized,
     {
-        self.request(Method::PUT, endpoint, None, body).await
+        self.request(Method::PUT, endpoint, auth, None, body).await
     }
 
     pub async fn delete(
         &self,
         endpoint: &str,
-        params: Option<&[(&str, &str)]>,
-    ) -> Result<Response, reqwest::Error> {
-        self.request::<()>(Method::DELETE, endpoint, params, None)
+        auth: bool,
+        params: Option<Vec<(String, String)>>,
+    ) -> Response {
+        self.request::<()>(Method::DELETE, endpoint, auth, params, None)
             .await
     }
 
@@ -60,29 +75,42 @@ impl ApiClient {
         &self,
         method: Method,
         endpoint: &str,
-        params: Option<&[(&str, &str)]>,
+        auth: bool,
+        params: Option<Vec<(String, String)>>,
         body: Option<&T>,
-    ) -> Result<Response, reqwest::Error>
+    ) -> Response
     where
         T: Serialize + ?Sized,
     {
-        let token: RwLockReadGuard<String> = self.token.read().await;
         let url: String = format!("{}{}", self.base_url, endpoint);
-        let full_url: Url = Url::parse_with_params(&url, params.unwrap_or(&[])).unwrap();
-        print!("{}", full_url);
 
         let mut request: RequestBuilder = match method {
-            Method::GET => self.client.get(full_url),
-            Method::POST => self.client.post(full_url),
-            Method::PUT => self.client.put(full_url),
-            Method::DELETE => self.client.delete(full_url),
+            Method::GET => self.client.get(url),
+            Method::POST => self.client.post(url),
+            Method::PUT => self.client.put(url),
+            Method::DELETE => self.client.delete(url),
             _ => unreachable!(),
         };
+
+        if let Some(req_params) = params {
+            request = request.form(&req_params);
+        }
+
         if let Some(req_body) = body {
             request = request.json(req_body);
         }
 
-        request = request.bearer_auth(&*token);
-        request.send().await
+        if auth {
+            let token: RwLockReadGuard<String> = self.token.read().await;
+            request = request.bearer_auth(&*token);
+        }
+        request.send().await.unwrap()
+    }
+}
+
+async fn close_fantoccini_client(fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>) {
+    let mut client: MutexGuard<Option<FantocciniClient>> = fantoccini_client.lock().await;
+    if let Some(client) = client.take() {
+        client.close().await.unwrap();
     }
 }
