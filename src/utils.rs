@@ -1,3 +1,8 @@
+use std::{
+    fs::File,
+    io::{Read, Write},
+};
+
 use serde::Serialize;
 use serde_json::Value;
 
@@ -22,4 +27,17 @@ impl<T: Serialize> ToQueryParams for T {
             _ => Vec::new(),
         }
     }
+}
+
+pub fn write_value_to_file(filename: &str, value: &str) -> std::io::Result<()> {
+    let mut file: File = File::create(filename)?;
+    file.write_all(value.as_bytes())?;
+    Ok(())
+}
+
+pub fn read_value_from_file(filename: &str) -> std::io::Result<String> {
+    let mut file: File = File::open(filename)?;
+    let mut value: String = String::new();
+    file.read_to_string(&mut value)?;
+    Ok(value)
 }

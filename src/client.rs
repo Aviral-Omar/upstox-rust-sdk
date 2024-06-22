@@ -1,5 +1,9 @@
 use {
-    crate::{apis::login::get_authorization_code, constants::WEBDRIVER_SOCKET_ENV},
+    crate::{
+        apis::login::get_authorization_code,
+        constants::{UPSTOX_AUTH_TOKEN_FILENAME, WEBDRIVER_SOCKET_ENV},
+        utils::{read_value_from_file, write_value_to_file},
+    },
     fantoccini::{Client as FantocciniClient, ClientBuilder},
     reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
@@ -31,7 +35,15 @@ impl ApiClient {
         let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
             Arc::new(Mutex::new(Some(fantoccini_client)));
 
-        get_authorization_code(&api_client, fantoccini_client.clone()).await;
+        let auth_code: String = match read_value_from_file(UPSTOX_AUTH_TOKEN_FILENAME) {
+            Ok(code) => code,
+            Err(_) => {
+                let code: String =
+                    get_authorization_code(&api_client, fantoccini_client.clone()).await;
+                write_value_to_file(UPSTOX_AUTH_TOKEN_FILENAME, &code).unwrap();
+                code
+            }
+        };
 
         close_fantoccini_client(fantoccini_client).await;
         api_client
