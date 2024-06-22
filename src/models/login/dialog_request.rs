@@ -1,12 +1,12 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum ResponseType {
     Code,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct DialogRequest {
     pub client_id: String,
     pub redirect_uri: String,

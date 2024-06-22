@@ -6,12 +6,12 @@ use std::{
 use serde::Serialize;
 use serde_json::Value;
 
-pub trait ToQueryParams {
-    fn to_query_params(&self) -> Vec<(String, String)>;
+pub trait ToKeyValueTuples {
+    fn to_key_value_tuples_vec(&self) -> Vec<(String, String)>;
 }
 
-impl<T: Serialize> ToQueryParams for T {
-    fn to_query_params(&self) -> Vec<(String, String)> {
+impl<T: Serialize> ToKeyValueTuples for T {
+    fn to_key_value_tuples_vec(&self) -> Vec<(String, String)> {
         let value: Value = serde_json::to_value(self).expect("Failed to serialize");
         match value {
             Value::Object(map) => map

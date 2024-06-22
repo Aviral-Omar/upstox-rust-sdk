@@ -5,17 +5,25 @@ use {
             BASE_URL, EMAIL_ID_ENV, GOOGLE_AUTHORIZATION_CODE_ENV, GOOGLE_CLIENT_ID_ENV,
             GOOGLE_CLIENT_SECRET_ENV, GOOGLE_IMAP_URL, GOOGLE_OAUTH2_ACCESS_TOKEN_URL,
             GOOGLE_OAUTH2_AUTH_URL, GOOGLE_REFRESH_TOKEN_FILENAME, LOGIN_AUTHORIZE_ENDPOINT,
-            LOGIN_PIN_ENV, MOBILE_NUMBER_ENV, REDIRECT_PORT_ENV,
+            LOGIN_GET_TOKEN_ENDPOINT, LOGIN_PIN_ENV, MOBILE_NUMBER_ENV, REDIRECT_PORT_ENV,
+            UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV,
         },
-        models::login::{
-            dialog_request::{DialogRequest, ResponseType},
-            google_oauth2_request::{
-                self, AccessType, GoogleOAuth2AuthRequest, GoogleOAuth2CodeTokenRequest,
-                GoogleOAuth2RefreshTokenRequest, GrantType, Prompt,
+        models::{
+            error_response::ErrorResponse,
+            login::{
+                dialog_request::{DialogRequest, ResponseType},
+                google_oauth2_request::{
+                    self, AccessType, GoogleOAuth2AuthRequest, GoogleOAuth2CodeTokenRequest,
+                    GoogleOAuth2RefreshTokenRequest, Prompt,
+                },
+                google_oauth2_response::{
+                    GoogleOAuth2TokenErrorResponse, GoogleOAuth2TokenResponse,
+                },
+                token_request::{self, TokenRequest},
+                token_response::TokenResponse,
             },
-            google_oauth2_response::{GoogleOAuth2TokenErrorResponse, GoogleOAuth2TokenResponse},
         },
-        utils::{read_value_from_file, write_value_to_file, ToQueryParams},
+        utils::{read_value_from_file, write_value_to_file, ToKeyValueTuples},
     },
     async_imap::{
         self,
@@ -73,7 +81,7 @@ pub async fn get_authorization_code(
     };
     let full_url: Url = Url::parse_with_params(
         format!("{}{}", BASE_URL, LOGIN_AUTHORIZE_ENDPOINT).as_str(),
-        dialog_request_params.to_query_params(),
+        dialog_request_params.to_key_value_tuples_vec(),
     )
     .unwrap();
 
@@ -118,6 +126,37 @@ pub async fn get_authorization_code(
         pin_continue_button.click().await.unwrap();
 
         code_future.await
+    }
+}
+
+pub async fn get_token(
+    api_client: &ApiClient,
+    auth_code: String,
+) -> Result<TokenResponse, ErrorResponse> {
+    let client_id: String = env::var(UPLINK_API_KEY_ENV).unwrap();
+    let client_secret: String = env::var(UPLINK_API_SECRET_ENV).unwrap();
+    let redirect_port: String = env::var(REDIRECT_PORT_ENV).unwrap();
+
+    let token_request_form: TokenRequest = TokenRequest {
+        code: auth_code,
+        client_id,
+        client_secret,
+        redirect_uri: format!("{}{}", "http://127.0.0.1:", &redirect_port),
+        grant_type: token_request::GrantType::AuthorizationCode,
+    };
+
+    let res: reqwest::Response = api_client
+        .post::<()>(
+            LOGIN_GET_TOKEN_ENDPOINT,
+            false,
+            None,
+            Some(token_request_form.to_key_value_tuples_vec()),
+        )
+        .await;
+
+    match res.status().as_u16() {
+        200 => Ok(res.json::<TokenResponse>().await.unwrap()),
+        _ => Err(res.json::<ErrorResponse>().await.unwrap()),
     }
 }
 
@@ -258,7 +297,7 @@ fn get_google_access_token(
         let client_id: String = env::var(GOOGLE_CLIENT_ID_ENV).unwrap();
         let client_secret: String = env::var(GOOGLE_CLIENT_SECRET_ENV).unwrap();
 
-        let google_oauth2_token_request_body: Box<dyn ToQueryParams>;
+        let google_oauth2_token_request_body: Box<dyn ToKeyValueTuples>;
         let refresh_token_found: bool;
         match read_value_from_file(GOOGLE_REFRESH_TOKEN_FILENAME) {
             // Refresh Token already present, so use it to get new access token
@@ -267,7 +306,7 @@ fn get_google_access_token(
                 google_oauth2_token_request_body = Box::new(GoogleOAuth2RefreshTokenRequest {
                     client_id,
                     client_secret,
-                    grant_type: GrantType::RefreshToken,
+                    grant_type: google_oauth2_request::GrantType::RefreshToken,
                     refresh_token,
                 });
             }
@@ -286,7 +325,7 @@ fn get_google_access_token(
                     client_secret,
                     code,
                     code_verifier: None,
-                    grant_type: GrantType::AuthorizationCode,
+                    grant_type: google_oauth2_request::GrantType::AuthorizationCode,
                     redirect_uri: format!("{}{}", "http://127.0.0.1:", &redirect_port),
                 });
             }
@@ -294,7 +333,7 @@ fn get_google_access_token(
 
         let res: reqwest::Response = client
             .post(GOOGLE_OAUTH2_ACCESS_TOKEN_URL)
-            .form(&google_oauth2_token_request_body.to_query_params())
+            .form(&google_oauth2_token_request_body.to_key_value_tuples_vec())
             .send()
             .await
             .unwrap();
@@ -343,7 +382,7 @@ async fn get_google_auth_code() -> String {
 
     let oauth_url: Url = Url::parse_with_params(
         GOOGLE_OAUTH2_AUTH_URL,
-        google_oauth2_auth_request.to_query_params(),
+        google_oauth2_auth_request.to_key_value_tuples_vec(),
     )
     .unwrap();
     oauth_url.open();

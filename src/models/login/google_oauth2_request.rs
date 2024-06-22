@@ -1,39 +1,39 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseType {
     Code,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum AccessType {
     Offline,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum Prompt {
     Consent,
     SelectAccount,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantType {
     AuthorizationCode,
     RefreshToken,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub enum CodeChallengeMethod {
     S256,
     #[serde(rename = "plain")]
     Plain,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct GoogleOAuth2AuthRequest {
     pub client_id: String,
     pub redirect_uri: String,
@@ -53,7 +53,7 @@ pub struct GoogleOAuth2AuthRequest {
     pub prompt: Option<Prompt>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct GoogleOAuth2CodeTokenRequest {
     pub client_id: String,
     pub client_secret: String,
@@ -64,7 +64,7 @@ pub struct GoogleOAuth2CodeTokenRequest {
     pub redirect_uri: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct GoogleOAuth2RefreshTokenRequest {
     pub client_id: String,
     pub client_secret: String,

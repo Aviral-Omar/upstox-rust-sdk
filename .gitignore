@@ -2,5 +2,4 @@
 
 .env
 
-refresh_token.txt
-auth_code.txt
+*.txt
