@@ -1,6 +1,5 @@
 use {
     crate::{
-        apis::login::{get_authorization_code, get_token},
         constants::{
             UPSTOX_ACCESS_TOKEN_FILENAME, UPSTOX_AUTH_CODE_FILENAME, USER_GET_PROFILE_ENDPOINT,
             WEBDRIVER_SOCKET_ENV,
@@ -41,6 +40,8 @@ impl ApiClient {
             if verify_response.status().as_u16() == 200 {
                 println!("Using valid access token from file");
                 return api_client;
+            } else {
+                println!("Access Token invalid");
             }
         };
 
@@ -61,7 +62,7 @@ impl ApiClient {
         api_client
     }
 
-    async fn initiate_auth_flow(self: &mut Self) -> String {
+    async fn initiate_auth_flow(&mut self) -> String {
         let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV).unwrap();
 
         let fantoccini_client: FantocciniClient = ClientBuilder::native()
@@ -71,14 +72,14 @@ impl ApiClient {
         let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
             Arc::new(Mutex::new(Some(fantoccini_client)));
 
-        let code: String = get_authorization_code(&self, fantoccini_client.clone()).await;
+        let code: String = self.get_authorization_code(fantoccini_client.clone()).await;
         write_value_to_file(UPSTOX_AUTH_CODE_FILENAME, &code).unwrap();
-        close_fantoccini_client(fantoccini_client).await;
+        self.close_fantoccini_client(fantoccini_client).await;
         code
     }
 
-    async fn populate_token(self: &mut Self, auth_code: &str) -> bool {
-        match get_token(&self, auth_code.to_string()).await {
+    async fn populate_token(&mut self, auth_code: &str) -> bool {
+        match self.get_token(auth_code.to_string()).await {
             Ok(token_response) => {
                 let mut w: RwLockWriteGuard<String> = self.token.write().await;
                 *w = token_response.access_token;
@@ -185,11 +186,14 @@ impl ApiClient {
         request = request.header("Accept", "application/json");
         request.send().await.unwrap()
     }
-}
 
-async fn close_fantoccini_client(fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>) {
-    let mut client: MutexGuard<Option<FantocciniClient>> = fantoccini_client.lock().await;
-    if let Some(client) = client.take() {
-        client.close().await.unwrap();
+    async fn close_fantoccini_client(
+        &self,
+        fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
+    ) {
+        let mut client: MutexGuard<Option<FantocciniClient>> = fantoccini_client.lock().await;
+        if let Some(client) = client.take() {
+            client.close().await.unwrap();
+        }
     }
 }

@@ -1,12 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
-pub enum TokenType {
-    Bearer,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct TokenResponse {
+pub struct ProfileResponse {
     pub email: String,
     pub exchanges: Vec<String>,
     pub products: Vec<String>,

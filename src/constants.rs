@@ -2,8 +2,12 @@ pub const BASE_URL: &str = "https://api-v2.upstox.com";
 
 pub const LOGIN_AUTHORIZE_ENDPOINT: &str = "/login/authorization/dialog";
 pub const LOGIN_GET_TOKEN_ENDPOINT: &str = "/login/authorization/token";
+pub const LOGOUT_ENDPOINT: &str = "/logout";
 
+pub const USER_GET_FUND_AND_MARGIN_ENDPOINT: &str = "/user/get-funds-and-margin";
 pub const USER_GET_PROFILE_ENDPOINT: &str = "/user/profile";
+
+pub const CHARGES_BROKERAGE_DETAILS_ENDPOINT: &str = "/charges/brokerage";
 
 pub const GOOGLE_IMAP_URL: &str = "imap.gmail.com";
 pub const GOOGLE_OAUTH2_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
