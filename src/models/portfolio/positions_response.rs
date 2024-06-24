@@ -1,0 +1,36 @@
+use {
+    crate::models::{Exchange, ProductType},
+    serde::Deserialize,
+};
+
+#[derive(Deserialize, Debug)]
+pub struct PositionsResponse {
+    pub exchange: Exchange,
+    pub multiplier: f64,
+    pub value: f64,
+    pub pnl: f64,
+    pub product: ProductType,
+    pub instrument_token: String,
+    pub average_price: Option<f64>,
+    pub buy_value: f64,
+    pub overnight_quantity: u32,
+    pub day_buy_value: f64,
+    pub day_buy_price: f64,
+    pub overnight_buy_amount: f64,
+    pub overnight_buy_quantity: u32,
+    pub day_buy_quantity: u32,
+    pub day_sell_value: f64,
+    pub day_sell_price: f64,
+    pub overnight_sell_amount: f64,
+    pub overnight_sell_quantity: u32,
+    pub day_sell_quantity: u32,
+    pub quantity: u32,
+    pub last_price: f64,
+    pub unrealised: f64,
+    pub realised: f64,
+    pub sell_value: f64,
+    pub trading_symbol: String,
+    pub close_price: f64,
+    pub buy_price: f64,
+    pub sell_price: f64,
+}

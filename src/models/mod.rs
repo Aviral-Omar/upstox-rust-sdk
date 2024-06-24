@@ -17,7 +17,7 @@ use {
     std::{fmt, str::FromStr},
 };
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ProductType {
     I,
@@ -41,6 +41,18 @@ pub enum SegmentType {
     COM,
     CD,
     MF,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Exchange {
+    NSE,
+    NFO,
+    CDS,
+    BSE,
+    BFO,
+    BCD,
+    MCX,
 }
 
 #[derive(Debug)]

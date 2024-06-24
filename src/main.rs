@@ -6,11 +6,8 @@ use {
         constants::{BASE_URL, UPLINK_API_KEY_ENV},
         models::{
             charges::brokerage_details_request::BrokerageDetailsRequest,
-            orders::{
-                order_details_request::OrderDetailsRequest,
-                trade_history_request::TradeHistoryRequest,
-            },
-            ProductType, SegmentType, TransactionType,
+            orders::trade_history_request::TradeHistoryRequest, ProductType, SegmentType,
+            TransactionType,
         },
     },
 };
@@ -35,15 +32,6 @@ async fn main() {
             })
             .await
     );
-    println!(
-        "{:?}",
-        api_client
-            .get_order_details(OrderDetailsRequest {
-                order_id: Some("1".to_string()),
-                tag: None
-            })
-            .await
-    );
     println!("{:?}", api_client.get_order_book().await);
     println!(
         "{:?}",
@@ -57,5 +45,6 @@ async fn main() {
             })
             .await
     );
+    println!("{:?}", api_client.get_holdings().await);
 }
 // ./geckodriver --binary "/home/aviralomar/.local/share/flatpak/exports/bin/org.mozilla.firefox" --profile-root "/home/aviralomar/.var/app/org.mozilla.firefox/cache/mozilla/firefox/cv70hco5.default-release"
