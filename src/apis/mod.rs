@@ -1,4 +1,10 @@
 pub mod charges;
+pub mod historical_data;
 pub mod login;
+pub mod market_information;
+pub mod market_quote;
+pub mod option_chain;
 pub mod orders;
+pub mod portfolio;
+pub mod trade_profit_and_loss;
 pub mod user;
