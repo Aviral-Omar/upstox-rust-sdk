@@ -6,7 +6,7 @@ use {
             GOOGLE_CLIENT_SECRET_ENV, GOOGLE_IMAP_URL, GOOGLE_OAUTH2_ACCESS_TOKEN_URL,
             GOOGLE_OAUTH2_AUTH_URL, GOOGLE_REFRESH_TOKEN_FILENAME, LOGIN_AUTHORIZE_ENDPOINT,
             LOGIN_GET_TOKEN_ENDPOINT, LOGIN_PIN_ENV, LOGOUT_ENDPOINT, MOBILE_NUMBER_ENV,
-            REDIRECT_PORT_ENV, UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV,
+            REDIRECT_PORT_ENV, UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV, WEBDRIVER_SOCKET_ENV,
         },
         models::{
             error_response::ErrorResponse,
@@ -33,7 +33,7 @@ use {
     },
     async_native_tls::{TlsConnector, TlsStream},
     chrono::{DateTime, Utc},
-    fantoccini::{elements::Element, Client, Locator},
+    fantoccini::{elements::Element, Client as FantocciniClient, ClientBuilder, Locator},
     futures::{Future, TryStreamExt},
     mailparse::{parse_mail, ParsedMail},
     regex::Regex,
@@ -44,7 +44,7 @@ use {
         self,
         io::{AsyncReadExt, AsyncWriteExt},
         net::{TcpListener, TcpStream},
-        sync::Mutex,
+        sync::{Mutex, MutexGuard},
         time::{sleep, Duration},
     },
     url_open::UrlOpen,
@@ -68,12 +68,10 @@ impl Authenticator for &OAuth2 {
 }
 
 impl ApiClient {
-    pub async fn get_authorization_code(
-        &self,
-        fantoccini_client: Arc<Mutex<Option<Client>>>,
-    ) -> String {
-        let redirect_port: String = env::var(REDIRECT_PORT_ENV).unwrap();
+    pub async fn get_authorization_code(&self) -> String {
         let login_pin: String = env::var(LOGIN_PIN_ENV).unwrap();
+        let redirect_port: String = env::var(REDIRECT_PORT_ENV).unwrap();
+        let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV).unwrap();
 
         let dialog_request_params: DialogRequest = DialogRequest {
             client_id: self.api_key.clone(),
@@ -87,25 +85,32 @@ impl ApiClient {
         )
         .unwrap();
 
+        let fantoccini_client: FantocciniClient = ClientBuilder::native()
+            .connect(&webdriver_socket)
+            .await
+            .expect("Failed to connect to WebDriver");
+        let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
+            Arc::new(Mutex::new(Some(fantoccini_client)));
+
         {
-            let mut client: tokio::sync::MutexGuard<Option<Client>> =
+            let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
                 fantoccini_client.lock().await;
-            let client: &mut Client = client.as_mut().expect("Client is already closed");
+            let client: &mut FantocciniClient = client.as_mut().expect("Client is already closed");
             client.goto(full_url.as_str()).await.unwrap();
         }
 
         sleep(Duration::from_millis(200)).await;
         let otp_sent_timestamp: i64 = Utc::now().timestamp();
         self.send_otp(fantoccini_client.clone()).await;
-        // sleep(Duration::from_millis(5000)).await;
 
         let otp: String = self
             .get_otp(fantoccini_client.clone(), otp_sent_timestamp)
             .await;
-        {
-            let mut client: tokio::sync::MutexGuard<Option<Client>> =
+
+        let auth_code: String = {
+            let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
                 fantoccini_client.lock().await;
-            let client: &mut Client = client.as_mut().expect("Client is already closed");
+            let client: &mut FantocciniClient = client.as_mut().expect("Client is already closed");
             let otp_field: Element = client
                 .wait()
                 .every(Duration::from_millis(100))
@@ -132,7 +137,10 @@ impl ApiClient {
             pin_continue_button.click().await.unwrap();
 
             code_future.await
-        }
+        };
+
+        self.close_fantoccini_client(fantoccini_client).await;
+        auth_code
     }
 
     pub async fn get_token(&self, auth_code: String) -> Result<TokenResponse, ErrorResponse> {
@@ -153,7 +161,7 @@ impl ApiClient {
                 LOGIN_GET_TOKEN_ENDPOINT,
                 false,
                 None,
-                Some(token_request_form.to_key_value_tuples_vec()),
+                Some(&token_request_form.to_key_value_tuples_vec()),
             )
             .await;
 
@@ -171,11 +179,12 @@ impl ApiClient {
         }
     }
 
-    async fn send_otp(&self, fantoccini_client: Arc<Mutex<Option<Client>>>) {
+    async fn send_otp(&self, fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>) {
         let mobile_number: String = env::var(MOBILE_NUMBER_ENV).unwrap();
         {
-            let client: tokio::sync::MutexGuard<Option<Client>> = fantoccini_client.lock().await;
-            let client: &Client = client.as_ref().expect("Client is already closed");
+            let client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
+                fantoccini_client.lock().await;
+            let client: &FantocciniClient = client.as_ref().expect("Client is already closed");
             let mobile_number_field: Element = client.find(Locator::Id("mobileNum")).await.unwrap();
             mobile_number_field.send_keys(&mobile_number).await.unwrap();
 
@@ -186,7 +195,7 @@ impl ApiClient {
 
     async fn get_otp(
         &self,
-        fantoccini_client: Arc<Mutex<Option<Client>>>,
+        fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
         otp_sent_time: i64,
     ) -> String {
         let email: String = env::var(EMAIL_ID_ENV).unwrap();
@@ -311,7 +320,7 @@ impl ApiClient {
 
     fn get_google_access_token<'a>(
         &'a self,
-        fantoccini_client: Arc<Mutex<Option<Client>>>,
+        fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
     ) -> Pin<Box<dyn Future<Output = String> + 'a>> {
         Box::pin(async move {
             let client: reqwest::Client = reqwest::Client::new();
@@ -441,5 +450,15 @@ impl ApiClient {
         }
 
         None
+    }
+
+    async fn close_fantoccini_client(
+        &self,
+        fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
+    ) {
+        let mut client: MutexGuard<Option<FantocciniClient>> = fantoccini_client.lock().await;
+        if let Some(client) = client.take() {
+            client.close().await.unwrap();
+        }
     }
 }

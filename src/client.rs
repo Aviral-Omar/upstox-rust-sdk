@@ -2,15 +2,13 @@ use {
     crate::{
         constants::{
             UPSTOX_ACCESS_TOKEN_FILENAME, UPSTOX_AUTH_CODE_FILENAME, USER_GET_PROFILE_ENDPOINT,
-            WEBDRIVER_SOCKET_ENV,
         },
         utils::{read_value_from_file, write_value_to_file},
     },
-    fantoccini::{Client as FantocciniClient, ClientBuilder},
     reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
-    std::{env, sync::Arc},
-    tokio::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    std::sync::Arc,
+    tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
 #[derive(Debug)]
@@ -63,18 +61,8 @@ impl ApiClient {
     }
 
     async fn initiate_auth_flow(&mut self) -> String {
-        let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV).unwrap();
-
-        let fantoccini_client: FantocciniClient = ClientBuilder::native()
-            .connect(&webdriver_socket)
-            .await
-            .expect("Failed to connect to WebDriver");
-        let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
-            Arc::new(Mutex::new(Some(fantoccini_client)));
-
-        let code: String = self.get_authorization_code(fantoccini_client.clone()).await;
+        let code: String = self.get_authorization_code().await;
         write_value_to_file(UPSTOX_AUTH_CODE_FILENAME, &code).unwrap();
-        self.close_fantoccini_client(fantoccini_client).await;
         code
     }
 
@@ -101,7 +89,7 @@ impl ApiClient {
         &self,
         endpoint: &str,
         auth: bool,
-        params: Option<Vec<(String, String)>>,
+        params: Option<&Vec<(String, String)>>,
     ) -> Response {
         self.request::<()>(Method::GET, endpoint, auth, params, None, None)
             .await
@@ -112,7 +100,7 @@ impl ApiClient {
         endpoint: &str,
         auth: bool,
         json_body: Option<&T>,
-        form_body: Option<Vec<(String, String)>>,
+        form_body: Option<&Vec<(String, String)>>,
     ) -> Response
     where
         T: Serialize + ?Sized,
@@ -126,7 +114,7 @@ impl ApiClient {
         endpoint: &str,
         auth: bool,
         json_body: Option<&T>,
-        form_body: Option<Vec<(String, String)>>,
+        form_body: Option<&Vec<(String, String)>>,
     ) -> Response
     where
         T: Serialize + ?Sized,
@@ -139,7 +127,7 @@ impl ApiClient {
         &self,
         endpoint: &str,
         auth: bool,
-        params: Option<Vec<(String, String)>>,
+        params: Option<&Vec<(String, String)>>,
     ) -> Response {
         self.request::<()>(Method::DELETE, endpoint, auth, params, None, None)
             .await
@@ -150,9 +138,9 @@ impl ApiClient {
         method: Method,
         endpoint: &str,
         auth: bool,
-        params: Option<Vec<(String, String)>>,
+        params: Option<&Vec<(String, String)>>,
         json_body: Option<&T>,
-        form_body: Option<Vec<(String, String)>>,
+        form_body: Option<&Vec<(String, String)>>,
     ) -> Response
     where
         T: Serialize + ?Sized,
@@ -168,7 +156,7 @@ impl ApiClient {
         };
 
         if let Some(req_params) = params {
-            request = request.query(&req_params);
+            request = request.query(req_params);
         }
 
         if let Some(req_json_body) = json_body {
@@ -176,7 +164,7 @@ impl ApiClient {
         }
 
         if let Some(req_form_body) = form_body {
-            request = request.form(&req_form_body);
+            request = request.form(req_form_body);
         }
 
         if auth {
@@ -185,15 +173,5 @@ impl ApiClient {
         }
         request = request.header("Accept", "application/json");
         request.send().await.unwrap()
-    }
-
-    async fn close_fantoccini_client(
-        &self,
-        fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
-    ) {
-        let mut client: MutexGuard<Option<FantocciniClient>> = fantoccini_client.lock().await;
-        if let Some(client) = client.take() {
-            client.close().await.unwrap();
-        }
     }
 }
