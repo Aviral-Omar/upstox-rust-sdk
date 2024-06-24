@@ -1,0 +1,40 @@
+use {
+    crate::models::{
+        orders::{OrderType, ValidityType},
+        OrderStatus, ProductType, TransactionType,
+    },
+    serde::Deserialize,
+};
+
+#[derive(Deserialize, Debug)]
+pub struct OrderDetailsResponse {
+    pub exchange: String,
+    pub product: ProductType,
+    pub price: f64,
+    pub quantity: u32,
+    pub status: OrderStatus,
+    pub guid: Option<String>,
+    pub tag: Option<String>,
+    pub instrument_token: String,
+    pub placed_by: String,
+    pub trading_symbol: String,
+    pub order_type: OrderType,
+    pub validity: ValidityType,
+    pub trigger_price: Option<f64>,
+    pub disclosed_quantity: u32,
+    pub transaction_type: TransactionType,
+    pub average_price: f64,
+    pub filled_quantity: u32,
+    pub pending_quantity: u32,
+    pub status_message: Option<String>,
+    pub status_message_raw: Option<String>,
+    pub exchange_order_id: String,
+    pub parent_order_id: Option<String>,
+    pub order_id: String,
+    pub variety: String,
+    pub order_timestamp: String,
+    pub exchange_timestamp: String,
+    pub is_amo: bool,
+    pub order_request_id: String,
+    pub order_ref_id: String,
+}

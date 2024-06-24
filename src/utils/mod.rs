@@ -1,3 +1,5 @@
+pub mod serde_spaced_lowercase;
+
 use std::{
     fs::File,
     io::{Read, Write},

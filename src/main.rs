@@ -1,10 +1,17 @@
 use {
     dotenvy::dotenv,
     std::env,
-    uplink_sdk::{
+    upstox_rust_sdk::{
         client::ApiClient,
         constants::{BASE_URL, UPLINK_API_KEY_ENV},
-        models::user::fund_and_margin_request::SegmentType,
+        models::{
+            charges::brokerage_details_request::BrokerageDetailsRequest,
+            orders::{
+                order_details_request::OrderDetailsRequest,
+                trade_history_request::TradeHistoryRequest,
+            },
+            ProductType, SegmentType, TransactionType,
+        },
     },
 };
 
@@ -18,19 +25,37 @@ async fn main() {
     println!("{:?}", api_client.get_profile().await);
     println!(
         "{:?}",
-        api_client.get_fund_and_margin(Some(SegmentType::Sec)).await
+        api_client
+            .get_brokerage_details(BrokerageDetailsRequest {
+                instrument_token: "NSE_FO|49900".to_string(),
+                quantity: 10,
+                product: ProductType::I,
+                transaction_type: TransactionType::Buy,
+                price: 575.0
+            })
+            .await
     );
     println!(
         "{:?}",
         api_client
-            .get_brokerage_details(
-                "NSE_FO|49900".to_string(),
-                10,
-                "I".to_string(),
-                "BUY".to_string(),
-                575.0
-            )
+            .get_order_details(OrderDetailsRequest {
+                order_id: Some("1".to_string()),
+                tag: None
+            })
             .await
-    )
+    );
+    println!("{:?}", api_client.get_order_book().await);
+    println!(
+        "{:?}",
+        api_client
+            .get_trade_history(TradeHistoryRequest {
+                segment: SegmentType::MF,
+                start_date: "2024-01-01".to_string(),
+                end_date: "2024-06-20".to_string(),
+                page_number: 1,
+                page_size: 1
+            })
+            .await
+    );
 }
 // ./geckodriver --binary "/home/aviralomar/.local/share/flatpak/exports/bin/org.mozilla.firefox" --profile-root "/home/aviralomar/.var/app/org.mozilla.firefox/cache/mozilla/firefox/cv70hco5.default-release"

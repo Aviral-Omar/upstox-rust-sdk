@@ -9,6 +9,16 @@ pub const USER_GET_PROFILE_ENDPOINT: &str = "/user/profile";
 
 pub const CHARGES_BROKERAGE_DETAILS_ENDPOINT: &str = "/charges/brokerage";
 
+pub const ORDERS_PLACE_ORDER_ENDPOINT: &str = "/order/place";
+pub const ORDERS_MODIFY_ORDER_ENDPOINT: &str = "/order/modify";
+pub const ORDERS_CANCEL_ORDER_ENDPOINT: &str = "/order/cancel";
+pub const ORDERS_ORDER_DETAILS_ENDPOINT: &str = "/order/details";
+pub const ORDERS_ORDER_HISTORY_ENDPOINT: &str = "/order/history";
+pub const ORDERS_ORDER_BOOK_ENDPOINT: &str = "/order/retrieve-all";
+pub const ORDERS_TRADES_ENDPOINT: &str = "/order/get-trades-for-day";
+pub const ORDERS_ORDER_TRADES_ENDPOINT: &str = "/order/trades";
+pub const ORDERS_TRADE_HISTORY_ENDPOINT: &str = "/charges/historical-trades";
+
 pub const GOOGLE_IMAP_URL: &str = "imap.gmail.com";
 pub const GOOGLE_OAUTH2_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 pub const GOOGLE_OAUTH2_ACCESS_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";

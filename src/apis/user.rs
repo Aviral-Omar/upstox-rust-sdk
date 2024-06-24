@@ -35,7 +35,7 @@ impl ApiClient {
             .get(
                 USER_GET_FUND_AND_MARGIN_ENDPOINT,
                 true,
-                Some(fund_and_margin_params.to_key_value_tuples_vec()),
+                Some(&fund_and_margin_params.to_key_value_tuples_vec()),
             )
             .await;
 
