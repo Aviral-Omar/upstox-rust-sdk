@@ -19,6 +19,28 @@ pub const ORDERS_TRADES_ENDPOINT: &str = "/order/get-trades-for-day";
 pub const ORDERS_ORDER_TRADES_ENDPOINT: &str = "/order/trades";
 pub const ORDERS_TRADE_HISTORY_ENDPOINT: &str = "/charges/historical-trades";
 
+pub const TRADE_PNL_REPORT_METADATA_ENDPOINT: &str = "/trade/profit-loss/metadata";
+pub const TRADE_PNL_REPORT_ENDPOINT: &str = "/trade/profit-loss/data";
+pub const TRADE_PNL_TRADES_CHARGES_ENDPOINT: &str = "/trade/profit-loss/charges";
+
+pub const HISTORICAL_CANDLE_DATA_ENDPOINT: &str = "/historical-candle/{}/{}/{}/{}";
+pub const HISTORICAL_CANDLE_INTRADAY_DATA_ENDPOINT: &str = "/historical-candle/intraday/{}/{}";
+
+pub const PORTFOLIO_POSITIONS_ENDPOINT: &str = "/portfolio/short-term-positions";
+pub const PORTFOLIO_CONVERT_POSITIONS_ENDPOINT: &str = "/portfolio/convert-position";
+pub const PORTFOLIO_HOLDINGS_ENDPOINT: &str = "/portfolio/long-term-holdings";
+
+pub const MARKET_QUOTE_FULL_ENDPOINT: &str = "/market-quote/quotes";
+pub const MARKET_QUOTE_OHLC_ENDPOINT: &str = "/market-quote/ohlc";
+pub const MARKET_QUOTE_LTP_ENDPOINT: &str = "/market-quote/ltp";
+
+pub const MARKET_INFO_HOLIDAYS_ENDPOINT: &str = "/market/holidays";
+pub const MARKET_INFO_TIMINGS_ENDPOINT: &str = "/market/timings/{}";
+pub const MARKET_INFO_EXCHANGE_STATUS_ENDPOINT: &str = "/market/status/{}";
+
+pub const OPTION_CHAIN_CONTRACTS_ENDPOINT: &str = "/option/contract";
+pub const OPTION_CHAIN_PC_OPTION_CHAIN_ENDPOINT: &str = "/option/chain";
+
 pub const GOOGLE_IMAP_URL: &str = "imap.gmail.com";
 pub const GOOGLE_OAUTH2_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 pub const GOOGLE_OAUTH2_ACCESS_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
