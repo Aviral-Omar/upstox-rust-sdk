@@ -21,6 +21,9 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub async fn new(base_url: &str, api_key: &str) -> ApiClient {
+        // TODO make auth features optional
+        // TODO get instruments
+        // TODO integrate websockets and its options
         let mut api_client: ApiClient = ApiClient {
             base_url: base_url.to_string(),
             client: ReqwestClient::new(),

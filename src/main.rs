@@ -7,6 +7,7 @@ use {
         models::{
             charges::brokerage_details_request::BrokerageDetailsRequest,
             historical_data::historical_candle_data_request::HistoricalCandleDataRequest,
+            market_quote::full_market_quotes_request::FullMarketQuotesRequest,
             orders::trade_history_request::TradeHistoryRequest,
             trade_profit_and_loss::profit_loss_request::ProfitAndLossRequest, ProductType,
             SegmentType, TransactionType,
@@ -66,9 +67,17 @@ async fn main() {
         api_client
             .get_historical_candle_data(HistoricalCandleDataRequest {
                 instrument_key: "NSE_FO|49900".to_string(),
-                interval: "30minute".to_string(),
+                interval: "day".to_string(),
                 to_date: "2024-06-23".to_string(),
                 from_date: None
+            })
+            .await
+    );
+    println!(
+        "{:?}",
+        api_client
+            .get_full_market_quotes(FullMarketQuotesRequest {
+                instrument_key: "NSE_FO|49900,NSE_FO|42149".to_string(),
             })
             .await
     );
