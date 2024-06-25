@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SegmentFundAndMarginData {
     pub used_margin: f64,
     pub payin_amount: f64,
@@ -11,7 +11,7 @@ pub struct SegmentFundAndMarginData {
     pub exposure_margin: f64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct FundAndMarginResponse {
     pub commodity: Option<SegmentFundAndMarginData>,
     pub equity: Option<SegmentFundAndMarginData>,

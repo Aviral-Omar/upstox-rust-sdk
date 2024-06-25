@@ -1,9 +1,9 @@
 use {
     crate::models::{Exchange, ProductType},
-    serde::Deserialize,
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct PositionsResponse {
     pub exchange: Exchange,
     pub multiplier: f64,

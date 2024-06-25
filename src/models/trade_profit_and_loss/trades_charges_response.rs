@@ -1,13 +1,13 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Taxes {
     pub gst: f64,
     pub stt: f64,
     pub stamp_duty: f64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Charges {
     pub transaction: f64,
     pub clearing: f64,
@@ -17,7 +17,7 @@ pub struct Charges {
     pub demat_transaction: f64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ChargesBreakdown {
     pub total: f64,
     pub brokerage: f64,
@@ -25,7 +25,7 @@ pub struct ChargesBreakdown {
     pub charges: Charges,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct TradesChargesResponse {
     pub charges_breakdown: ChargesBreakdown,
 }

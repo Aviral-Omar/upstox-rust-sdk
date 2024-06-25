@@ -3,10 +3,10 @@ use {
         orders::{OrderType, ValidityType},
         OrderStatus, ProductType, TransactionType,
     },
-    serde::Deserialize,
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct OrderDetailsResponse {
     pub exchange: String,
     pub product: ProductType,

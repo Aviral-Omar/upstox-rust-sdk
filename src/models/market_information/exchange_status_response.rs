@@ -1,6 +1,6 @@
-use {crate::models::Exchange, serde::Deserialize};
+use {crate::models::Exchange, serde::{Deserialize, Serialize}};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MarketStatus {
     NormalOpen,
@@ -11,7 +11,7 @@ pub enum MarketStatus {
     ClosingEnd,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ExchangeStatusResponse {
     pub exchange: Exchange,
     pub status: MarketStatus,

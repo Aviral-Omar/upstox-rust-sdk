@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Page {
     pub page_number: u32,
     pub page_size: u32,
@@ -8,12 +8,12 @@ pub struct Page {
     pub total_pages: Option<u32>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Metadata {
     pub page: Page,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SuccessResponse<T> {
     pub status: String,
     pub data: T,

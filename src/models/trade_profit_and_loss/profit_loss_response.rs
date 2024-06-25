@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TradeType {
     FUT,
@@ -8,7 +8,7 @@ pub enum TradeType {
     EQ,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ProfitAndLossResponse {
     pub quantity: f64,
     pub isin: String,

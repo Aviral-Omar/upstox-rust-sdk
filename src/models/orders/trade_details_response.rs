@@ -1,9 +1,9 @@
 use {
     crate::models::{orders::OrderType, ProductType, TransactionType},
-    serde::Deserialize,
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct TradeDetailsResponse {
     pub exchange: String,
     pub product: ProductType,

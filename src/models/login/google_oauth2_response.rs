@@ -1,11 +1,11 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub enum TokenType {
     Bearer,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GoogleOAuth2TokenResponse {
     pub access_token: String,
     pub expires_in: i64,
@@ -15,7 +15,7 @@ pub struct GoogleOAuth2TokenResponse {
     pub token_type: TokenType,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GoogleOAuth2TokenErrorResponse {
     pub error: String,
     pub error_description: String,

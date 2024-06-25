@@ -1,9 +1,9 @@
 use {
     crate::models::{market_information::market_timings_response::MarketTimingResponse, Exchange},
-    serde::Deserialize,
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum HolidayType {
     SettlementHoliday,
@@ -11,7 +11,7 @@ pub enum HolidayType {
     SpecialTiming,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct MarketHolidayResponse {
     pub date: String,
     pub description: String,

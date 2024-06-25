@@ -1,6 +1,9 @@
-use {crate::models::ProductType, serde::Deserialize};
+use {
+    crate::models::ProductType,
+    serde::{Deserialize, Serialize},
+};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct HoldingsResponse {
     pub isin: String,
     pub cnc_used_quantity: u32,

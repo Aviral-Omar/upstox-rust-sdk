@@ -1,19 +1,22 @@
-use {crate::models::market_quote::OHLC, serde::Deserialize};
+use {
+    crate::models::market_quote::OHLC,
+    serde::{Deserialize, Serialize},
+};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct DepthLevel {
     pub quantity: u32,
     pub price: f64,
     pub orders: u32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Depth {
     pub buy: Vec<DepthLevel>,
     pub sell: Vec<DepthLevel>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct FullMarketQuoteResponse {
     pub ohlc: OHLC,
     pub depth: Depth,

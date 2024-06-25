@@ -1,9 +1,9 @@
 use {
     crate::models::{SegmentType, TransactionType},
-    serde::Deserialize,
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct TradeHistoryResponse {
     pub exchange: String,
     pub segment: SegmentType,

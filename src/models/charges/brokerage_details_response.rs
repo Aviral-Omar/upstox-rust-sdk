@@ -1,13 +1,13 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Taxes {
     pub gst: f64,
     pub stt: f64,
     pub stamp_duty: f64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct OtherCharges {
     pub transaction: f64,
     pub clearing: f64,
@@ -15,13 +15,13 @@ pub struct OtherCharges {
     pub sebi_turnover: f64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct DepositoryParticipantPlan {
     pub name: String,
     pub min_expensse: f64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ChargesData {
     pub total: f64,
     pub brokerage: f64,
@@ -30,7 +30,7 @@ pub struct ChargesData {
     pub dp_plan: Option<DepositoryParticipantPlan>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct BrokerageDetailsResponse {
     pub charges: ChargesData,
 }
