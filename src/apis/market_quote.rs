@@ -1,23 +1,23 @@
-use std::collections::HashMap;
-
-use serde_valid::Validate;
-
-use crate::{
-    client::ApiClient,
-    constants::{
-        MARKET_QUOTE_FULL_ENDPOINT, MARKET_QUOTE_LTP_ENDPOINT, MARKET_QUOTE_OHLC_ENDPOINT,
-    },
-    models::{
-        error_response::ErrorResponse,
-        market_quote::{
-            full_market_quotes_request::FullMarketQuotesRequest,
-            full_market_quotes_response::FullMarketQuoteResponse,
-            ltp_quotes_request::LTPQuotesRequest, ltp_quotes_response::LTPQuoteResponse,
-            ohlc_quotes_request::OHLCQuotesRequest, ohlc_quotes_response::OHLCQuoteResponse,
+use {
+    crate::{
+        client::ApiClient,
+        constants::{
+            MARKET_QUOTE_FULL_ENDPOINT, MARKET_QUOTE_LTP_ENDPOINT, MARKET_QUOTE_OHLC_ENDPOINT,
         },
-        success_response::SuccessResponse,
+        models::{
+            error_response::ErrorResponse,
+            market_quote::{
+                full_market_quotes_request::FullMarketQuotesRequest,
+                full_market_quotes_response::FullMarketQuoteResponse,
+                ltp_quotes_request::LTPQuotesRequest, ltp_quotes_response::LTPQuoteResponse,
+                ohlc_quotes_request::OHLCQuotesRequest, ohlc_quotes_response::OHLCQuoteResponse,
+            },
+            success_response::SuccessResponse,
+        },
+        utils::ToKeyValueTuples,
     },
-    utils::ToKeyValueTuples,
+    serde_valid::Validate,
+    std::collections::HashMap,
 };
 
 impl ApiClient {

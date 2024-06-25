@@ -35,8 +35,8 @@ pub const MARKET_QUOTE_OHLC_ENDPOINT: &str = "/market-quote/ohlc";
 pub const MARKET_QUOTE_LTP_ENDPOINT: &str = "/market-quote/ltp";
 
 pub const MARKET_INFO_HOLIDAYS_ENDPOINT: &str = "/market/holidays";
-pub const MARKET_INFO_TIMINGS_ENDPOINT: &str = "/market/timings/{}";
-pub const MARKET_INFO_EXCHANGE_STATUS_ENDPOINT: &str = "/market/status/{}";
+pub const MARKET_INFO_TIMINGS_ENDPOINT: &str = "/market/timings";
+pub const MARKET_INFO_EXCHANGE_STATUS_ENDPOINT: &str = "/market/status";
 
 pub const OPTION_CHAIN_CONTRACTS_ENDPOINT: &str = "/option/contract";
 pub const OPTION_CHAIN_PC_OPTION_CHAIN_ENDPOINT: &str = "/option/chain";

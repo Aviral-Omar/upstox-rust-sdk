@@ -14,7 +14,10 @@ pub mod user;
 use {
     crate::utils::serde_spaced_lowercase,
     serde::{Deserialize, Deserializer, Serialize, Serializer},
-    std::{fmt, str::FromStr},
+    std::{
+        fmt::{self, Display},
+        str::FromStr,
+    },
 };
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -55,6 +58,21 @@ pub enum Exchange {
     MCX,
 }
 
+impl Display for Exchange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s: &str = match self {
+            Exchange::NSE => "NSE",
+            Exchange::NFO => "NFO",
+            Exchange::CDS => "CDS",
+            Exchange::BSE => "BSE",
+            Exchange::BFO => "BFO",
+            Exchange::BCD => "BCD",
+            Exchange::MCX => "MCX",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[derive(Debug)]
 pub enum OrderStatus {
     ValidationPending,
@@ -76,9 +94,9 @@ pub enum OrderStatus {
     NotModified,
 }
 
-impl fmt::Display for OrderStatus {
+impl Display for OrderStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
+        let s: &str = match self {
             OrderStatus::ValidationPending => "ValidationPending",
             OrderStatus::ModifyPending => "ModifyPending",
             OrderStatus::TriggerPending => "TriggerPending",

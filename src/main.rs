@@ -7,10 +7,11 @@ use {
         models::{
             charges::brokerage_details_request::BrokerageDetailsRequest,
             historical_data::historical_candle_data_request::HistoricalCandleDataRequest,
+            market_information::exchange_status_request::ExchangeStatusRequest,
             market_quote::full_market_quotes_request::FullMarketQuotesRequest,
             orders::trade_history_request::TradeHistoryRequest,
-            trade_profit_and_loss::profit_loss_request::ProfitAndLossRequest, ProductType,
-            SegmentType, TransactionType,
+            trade_profit_and_loss::profit_loss_request::ProfitAndLossRequest, Exchange,
+            ProductType, SegmentType, TransactionType,
         },
     },
 };
@@ -78,6 +79,14 @@ async fn main() {
         api_client
             .get_full_market_quotes(FullMarketQuotesRequest {
                 instrument_key: "NSE_FO|49900,NSE_FO|42149".to_string(),
+            })
+            .await
+    );
+    println!(
+        "{:?}",
+        api_client
+            .get_exchange_status(ExchangeStatusRequest {
+                exchange: Exchange::NSE
             })
             .await
     );
