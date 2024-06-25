@@ -6,8 +6,10 @@ use {
         constants::{BASE_URL, UPLINK_API_KEY_ENV},
         models::{
             charges::brokerage_details_request::BrokerageDetailsRequest,
-            orders::trade_history_request::TradeHistoryRequest, ProductType, SegmentType,
-            TransactionType,
+            historical_data::historical_candle_data_request::HistoricalCandleDataRequest,
+            orders::trade_history_request::TradeHistoryRequest,
+            trade_profit_and_loss::profit_loss_request::ProfitAndLossRequest, ProductType,
+            SegmentType, TransactionType,
         },
     },
 };
@@ -46,5 +48,29 @@ async fn main() {
             .await
     );
     println!("{:?}", api_client.get_holdings().await);
+    println!(
+        "{:?}",
+        api_client
+            .get_pnl_report(ProfitAndLossRequest {
+                from_date: Some("27-06-2021".to_string()),
+                to_date: Some("23-06-2024".to_string()),
+                segment: SegmentType::EQ,
+                financial_year: "2324".to_string(),
+                page_number: 1,
+                page_size: 1
+            })
+            .await
+    );
+    println!(
+        "{:?}",
+        api_client
+            .get_historical_candle_data(HistoricalCandleDataRequest {
+                instrument_key: "NSE_FO|49900".to_string(),
+                interval: "30minute".to_string(),
+                to_date: "2024-06-23".to_string(),
+                from_date: None
+            })
+            .await
+    );
 }
 // ./geckodriver --binary "/home/aviralomar/.local/share/flatpak/exports/bin/org.mozilla.firefox" --profile-root "/home/aviralomar/.var/app/org.mozilla.firefox/cache/mozilla/firefox/cv70hco5.default-release"

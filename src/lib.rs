@@ -1,5 +1,5 @@
-pub mod apis;
+mod apis;
 pub mod client;
 pub mod constants;
 pub mod models;
-pub mod utils;
+mod utils;

@@ -23,8 +23,8 @@ pub const TRADE_PNL_REPORT_METADATA_ENDPOINT: &str = "/trade/profit-loss/metadat
 pub const TRADE_PNL_REPORT_ENDPOINT: &str = "/trade/profit-loss/data";
 pub const TRADE_PNL_TRADES_CHARGES_ENDPOINT: &str = "/trade/profit-loss/charges";
 
-pub const HISTORICAL_CANDLE_DATA_ENDPOINT: &str = "/historical-candle/{}/{}/{}/{}";
-pub const HISTORICAL_CANDLE_INTRADAY_DATA_ENDPOINT: &str = "/historical-candle/intraday/{}/{}";
+pub const HISTORICAL_CANDLE_DATA_ENDPOINT: &str = "/historical-candle";
+pub const HISTORICAL_CANDLE_INTRADAY_DATA_ENDPOINT: &str = "/historical-candle/intraday";
 
 pub const PORTFOLIO_POSITIONS_ENDPOINT: &str = "/portfolio/short-term-positions";
 pub const PORTFOLIO_CONVERT_POSITIONS_ENDPOINT: &str = "/portfolio/convert-position";

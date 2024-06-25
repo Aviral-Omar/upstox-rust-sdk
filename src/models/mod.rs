@@ -33,7 +33,7 @@ pub enum TransactionType {
     Sell,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum SegmentType {
     EQ,
