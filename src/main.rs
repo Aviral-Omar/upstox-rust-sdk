@@ -9,6 +9,7 @@ use {
             historical_data::historical_candle_data_request::HistoricalCandleDataRequest,
             market_information::exchange_status_request::ExchangeStatusRequest,
             market_quote::full_market_quotes_request::FullMarketQuotesRequest,
+            option_chain::option_contracts_request::OptionContractsRequest,
             orders::trade_history_request::TradeHistoryRequest,
             trade_profit_and_loss::profit_loss_request::ProfitAndLossRequest, Exchange,
             ProductType, SegmentType, TransactionType,
@@ -87,6 +88,15 @@ async fn main() {
         api_client
             .get_exchange_status(ExchangeStatusRequest {
                 exchange: Exchange::NSE
+            })
+            .await
+    );
+    println!(
+        "{:?}",
+        api_client
+            .get_option_contracts(OptionContractsRequest {
+                instrument_key: "NSE_EQ|INE002A01018".to_string(),
+                expiry_date: None
             })
             .await
     );
