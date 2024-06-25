@@ -41,5 +41,5 @@ pub fn read_value_from_file(filename: &str) -> std::io::Result<String> {
     let mut file: File = File::open(filename)?;
     let mut value: String = String::new();
     file.read_to_string(&mut value)?;
-    Ok(value)
+    Ok(value.trim().to_string())
 }

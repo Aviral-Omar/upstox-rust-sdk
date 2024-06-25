@@ -2,7 +2,7 @@ use {
     dotenvy::dotenv,
     std::env,
     upstox_rust_sdk::{
-        client::ApiClient,
+        client::{ApiClient, AutomateLoginConfig, LoginConfig},
         constants::{BASE_URL, UPLINK_API_KEY_ENV},
         models::{
             charges::brokerage_details_request::BrokerageDetailsRequest,
@@ -22,7 +22,19 @@ async fn main() {
     let _ = dotenv();
 
     let api_key: String = env::var(UPLINK_API_KEY_ENV).unwrap();
-    let api_client: ApiClient = ApiClient::new(BASE_URL, &api_key).await;
+    let api_client: ApiClient = ApiClient::new(
+        BASE_URL,
+        &api_key,
+        LoginConfig {
+            authorize: true,
+            automate_login_config: Some(AutomateLoginConfig {
+                automate_login: false,
+                automate_fetching_otp: false,
+                mail_provider: None,
+            }),
+        },
+    )
+    .await;
 
     println!("{:?}", api_client.get_profile().await);
     println!(

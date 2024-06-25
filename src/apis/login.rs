@@ -1,6 +1,6 @@
 use {
     crate::{
-        client::ApiClient,
+        client::{ApiClient, AutomateLoginConfig, MailProvider},
         constants::{
             BASE_URL, EMAIL_ID_ENV, GOOGLE_AUTHORIZATION_CODE_ENV, GOOGLE_CLIENT_ID_ENV,
             GOOGLE_CLIENT_SECRET_ENV, GOOGLE_IMAP_URL, GOOGLE_OAUTH2_ACCESS_TOKEN_URL,
@@ -68,10 +68,11 @@ impl Authenticator for &OAuth2 {
 }
 
 impl ApiClient {
-    pub async fn get_authorization_code(&self) -> String {
-        let login_pin: String = env::var(LOGIN_PIN_ENV).unwrap();
+    pub async fn get_authorization_code(
+        &self,
+        automate_login_config: &AutomateLoginConfig,
+    ) -> String {
         let redirect_port: String = env::var(REDIRECT_PORT_ENV).unwrap();
-        let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV).unwrap();
 
         let dialog_request_params: DialogRequest = DialogRequest {
             client_id: self.api_key.clone(),
@@ -85,62 +86,92 @@ impl ApiClient {
         )
         .unwrap();
 
-        let fantoccini_client: FantocciniClient = ClientBuilder::native()
-            .connect(&webdriver_socket)
-            .await
-            .expect("Failed to connect to WebDriver");
-        let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
-            Arc::new(Mutex::new(Some(fantoccini_client)));
+        if automate_login_config.automate_login {
+            if automate_login_config.automate_fetching_otp
+                && automate_login_config.mail_provider.is_none()
+            {
+                panic!("Cannot automate fetching OTP as no mail provider specified.")
+            }
 
-        {
-            let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
-                fantoccini_client.lock().await;
-            let client: &mut FantocciniClient = client.as_mut().expect("Client is already closed");
-            client.goto(full_url.as_str()).await.unwrap();
+            let login_pin: String = env::var(LOGIN_PIN_ENV).unwrap();
+            let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV).unwrap();
+
+            let fantoccini_client: FantocciniClient = ClientBuilder::native()
+                .connect(&webdriver_socket)
+                .await
+                .expect("Failed to connect to WebDriver");
+            let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
+                Arc::new(Mutex::new(Some(fantoccini_client)));
+
+            {
+                let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
+                    fantoccini_client.lock().await;
+                let client: &mut FantocciniClient =
+                    client.as_mut().expect("Client is already closed");
+                client.goto(full_url.as_str()).await.unwrap();
+            }
+
+            sleep(Duration::from_millis(200)).await;
+            let otp_sent_timestamp: i64 = Utc::now().timestamp();
+            self.send_otp(fantoccini_client.clone()).await;
+
+            let automate_fetching_otp: bool = automate_login_config.automate_fetching_otp;
+
+            if automate_fetching_otp {
+                let otp: String = self
+                    .get_otp(
+                        fantoccini_client.clone(),
+                        otp_sent_timestamp,
+                        automate_login_config.mail_provider.clone().unwrap(),
+                    )
+                    .await;
+
+                let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
+                    fantoccini_client.lock().await;
+                let client: &mut FantocciniClient =
+                    client.as_mut().expect("Client is already closed");
+                let otp_field: Element = client
+                    .wait()
+                    .every(Duration::from_millis(100))
+                    .for_element(Locator::Id("otpNum"))
+                    .await
+                    .unwrap();
+                otp_field.send_keys(&otp).await.unwrap();
+
+                let continue_button: Element =
+                    client.find(Locator::Id("continueBtn")).await.unwrap();
+                continue_button.click().await.unwrap();
+            }
+
+            let auth_code: String = {
+                let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
+                    fantoccini_client.lock().await;
+                let client: &mut FantocciniClient =
+                    client.as_mut().expect("Client is already closed");
+
+                let pin_field: Element = client
+                    .wait()
+                    .every(Duration::from_millis(100))
+                    .for_element(Locator::Id("pinCode"))
+                    .await
+                    .unwrap();
+                pin_field.send_keys(&login_pin).await.unwrap();
+
+                let pin_continue_button: Element =
+                    client.find(Locator::Id("pinContinueBtn")).await.unwrap();
+
+                let code_future = self.await_and_extract_code();
+                pin_continue_button.click().await.unwrap();
+
+                code_future.await
+            };
+
+            self.close_fantoccini_client(fantoccini_client).await;
+            auth_code
+        } else {
+            full_url.open();
+            self.await_and_extract_code().await
         }
-
-        sleep(Duration::from_millis(200)).await;
-        let otp_sent_timestamp: i64 = Utc::now().timestamp();
-        self.send_otp(fantoccini_client.clone()).await;
-
-        let otp: String = self
-            .get_otp(fantoccini_client.clone(), otp_sent_timestamp)
-            .await;
-
-        let auth_code: String = {
-            let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
-                fantoccini_client.lock().await;
-            let client: &mut FantocciniClient = client.as_mut().expect("Client is already closed");
-            let otp_field: Element = client
-                .wait()
-                .every(Duration::from_millis(100))
-                .for_element(Locator::Id("otpNum"))
-                .await
-                .unwrap();
-            otp_field.send_keys(&otp).await.unwrap();
-
-            let continue_button: Element = client.find(Locator::Id("continueBtn")).await.unwrap();
-            continue_button.click().await.unwrap();
-
-            let pin_field: Element = client
-                .wait()
-                .every(Duration::from_millis(100))
-                .for_element(Locator::Id("pinCode"))
-                .await
-                .unwrap();
-            pin_field.send_keys(&login_pin).await.unwrap();
-
-            let pin_continue_button: Element =
-                client.find(Locator::Id("pinContinueBtn")).await.unwrap();
-
-            let code_future = self.await_and_extract_code();
-            pin_continue_button.click().await.unwrap();
-
-            code_future.await
-        };
-
-        self.close_fantoccini_client(fantoccini_client).await;
-        auth_code
     }
 
     pub async fn get_token(&self, auth_code: String) -> Result<TokenResponse, ErrorResponse> {
@@ -197,17 +228,23 @@ impl ApiClient {
         &self,
         fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
         otp_sent_time: i64,
+        mail_provider: MailProvider,
     ) -> String {
         let email: String = env::var(EMAIL_ID_ENV).unwrap();
-        let access_token: String = self
-            .get_google_access_token(fantoccini_client.clone())
-            .await;
+        let access_token: String = match mail_provider {
+            MailProvider::Google => {
+                self.get_google_access_token(fantoccini_client.clone())
+                    .await
+            }
+        };
 
         let oauth2: OAuth2 = OAuth2 {
             user: email,
             access_token,
         };
-        let domain: &str = GOOGLE_IMAP_URL;
+        let domain: &str = match mail_provider {
+            MailProvider::Google => GOOGLE_IMAP_URL,
+        };
         let tcp_stream: TcpStream = TcpStream::connect((domain, 993)).await.unwrap();
         let tls_connector: TlsConnector = TlsConnector::new();
         let tls_stream: TlsStream<TcpStream> =
