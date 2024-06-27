@@ -2,8 +2,8 @@ use {
     dotenvy::dotenv,
     std::env,
     upstox_rust_sdk::{
-        client::{ApiClient, AutomateLoginConfig, LoginConfig},
-        constants::{BASE_URL, UPLINK_API_KEY_ENV},
+        client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider},
+        constants::UPLINK_API_KEY_ENV,
         models::{
             charges::brokerage_details_request::BrokerageDetailsRequest,
             historical_data::historical_candle_data_request::HistoricalCandleDataRequest,
@@ -22,20 +22,21 @@ async fn main() {
     let _ = dotenv();
 
     let api_key: String = env::var(UPLINK_API_KEY_ENV).unwrap();
-    let api_client: ApiClient = ApiClient::new(
-        BASE_URL,
+    let api_client: std::sync::Arc<tokio::sync::Mutex<ApiClient>> = ApiClient::new(
         &api_key,
         LoginConfig {
             authorize: true,
             automate_login_config: Some(AutomateLoginConfig {
-                automate_login: false,
-                automate_fetching_otp: false,
-                mail_provider: None,
+                automate_login: true,
+                schedule_login: true,
+                automate_fetching_otp: true,
+                mail_provider: Some(MailProvider::Google),
             }),
         },
     )
-    .await;
-
+    .await
+    .unwrap();
+    let api_client = api_client.lock().await;
     println!("{:?}", api_client.get_profile().await);
     println!(
         "{:?}",

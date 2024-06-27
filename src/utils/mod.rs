@@ -8,11 +8,11 @@ use std::{
 use serde::Serialize;
 use serde_json::Value;
 
-pub trait ToKeyValueTuples {
+pub trait ToKeyValueTuples: Send {
     fn to_key_value_tuples_vec(&self) -> Vec<(String, String)>;
 }
 
-impl<T: Serialize> ToKeyValueTuples for T {
+impl<T: Serialize + Send> ToKeyValueTuples for T {
     fn to_key_value_tuples_vec(&self) -> Vec<(String, String)> {
         let value: Value = serde_json::to_value(self).expect("Failed to serialize");
         match value {

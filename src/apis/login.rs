@@ -34,12 +34,12 @@ use {
     async_native_tls::{TlsConnector, TlsStream},
     chrono::{DateTime, Utc},
     fantoccini::{elements::Element, Client as FantocciniClient, ClientBuilder, Locator},
-    futures::{Future, TryStreamExt},
+    futures::TryStreamExt,
     mailparse::{parse_mail, ParsedMail},
     regex::Regex,
     reqwest::Url,
     scraper::{ElementRef, Html, Selector},
-    std::{self, borrow::Cow, env, fs::remove_file, net::SocketAddr, pin::Pin, sync::Arc},
+    std::{self, borrow::Cow, env, fs::remove_file, net::SocketAddr, sync::Arc},
     tokio::{
         self,
         io::{AsyncReadExt, AsyncWriteExt},
@@ -71,7 +71,7 @@ impl ApiClient {
     pub async fn get_authorization_code(
         &self,
         automate_login_config: &AutomateLoginConfig,
-    ) -> String {
+    ) -> Result<String, String> {
         let redirect_port: String = env::var(REDIRECT_PORT_ENV).unwrap();
 
         let dialog_request_params: DialogRequest = DialogRequest {
@@ -90,7 +90,9 @@ impl ApiClient {
             if automate_login_config.automate_fetching_otp
                 && automate_login_config.mail_provider.is_none()
             {
-                panic!("Cannot automate fetching OTP as no mail provider specified.")
+                return Err(
+                    "Cannot automate fetching OTP as no mail provider specified".to_string()
+                );
             }
 
             let login_pin: String = env::var(LOGIN_PIN_ENV).unwrap();
@@ -120,7 +122,6 @@ impl ApiClient {
             if automate_fetching_otp {
                 let otp: String = self
                     .get_otp(
-                        fantoccini_client.clone(),
                         otp_sent_timestamp,
                         automate_login_config.mail_provider.clone().unwrap(),
                     )
@@ -167,10 +168,10 @@ impl ApiClient {
             };
 
             self.close_fantoccini_client(fantoccini_client).await;
-            auth_code
+            Ok(auth_code)
         } else {
             full_url.open();
-            self.await_and_extract_code().await
+            Ok(self.await_and_extract_code().await)
         }
     }
 
@@ -202,11 +203,11 @@ impl ApiClient {
         }
     }
 
-    pub async fn logout(&self) -> bool {
+    pub async fn logout(&self) -> Result<SuccessResponse<bool>, String> {
         let res: reqwest::Response = self.delete(LOGOUT_ENDPOINT, true, None).await;
         match res.status().as_u16() {
-            200 => res.json::<SuccessResponse<bool>>().await.unwrap().data,
-            _ => false,
+            200 => Ok(res.json::<SuccessResponse<bool>>().await.unwrap()),
+            _ => Err("Unexpected error while logging out".to_string()),
         }
     }
 
@@ -224,18 +225,13 @@ impl ApiClient {
         }
     }
 
-    async fn get_otp(
-        &self,
-        fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
-        otp_sent_time: i64,
-        mail_provider: MailProvider,
-    ) -> String {
+    async fn get_otp(&self, otp_sent_time: i64, mail_provider: MailProvider) -> String {
         let email: String = env::var(EMAIL_ID_ENV).unwrap();
         let access_token: String = match mail_provider {
-            MailProvider::Google => {
-                self.get_google_access_token(fantoccini_client.clone())
-                    .await
-            }
+            MailProvider::Google => match self.get_google_access_token().await {
+                Ok(token) => token,
+                Err(_) => self.get_google_access_token().await.unwrap(),
+            },
         };
 
         let oauth2: OAuth2 = OAuth2 {
@@ -355,80 +351,75 @@ impl ApiClient {
         }
     }
 
-    fn get_google_access_token<'a>(
-        &'a self,
-        fantoccini_client: Arc<Mutex<Option<FantocciniClient>>>,
-    ) -> Pin<Box<dyn Future<Output = String> + 'a>> {
-        Box::pin(async move {
-            let client: reqwest::Client = reqwest::Client::new();
+    async fn get_google_access_token(&self) -> Result<String, ()> {
+        let client: &reqwest::Client = &self.client;
 
-            let client_id: String = env::var(GOOGLE_CLIENT_ID_ENV).unwrap();
-            let client_secret: String = env::var(GOOGLE_CLIENT_SECRET_ENV).unwrap();
+        let client_id: String = env::var(GOOGLE_CLIENT_ID_ENV).unwrap();
+        let client_secret: String = env::var(GOOGLE_CLIENT_SECRET_ENV).unwrap();
 
-            let google_oauth2_token_request_body: Box<dyn ToKeyValueTuples>;
-            let refresh_token_found: bool;
-            match read_value_from_file(GOOGLE_REFRESH_TOKEN_FILENAME) {
-                // Refresh Token already present, so use it to get new access token
-                Ok(refresh_token) => {
-                    refresh_token_found = true;
-                    google_oauth2_token_request_body = Box::new(GoogleOAuth2RefreshTokenRequest {
-                        client_id,
-                        client_secret,
-                        grant_type: google_oauth2_request::GrantType::RefreshToken,
-                        refresh_token,
-                    });
-                }
-                // No refresh token found, so use freshly generated authorization code from environment to generate access_token and refresh_token
-                Err(_) => {
-                    refresh_token_found = false;
-                    let code: String = match env::var(GOOGLE_AUTHORIZATION_CODE_ENV) {
-                        Ok(code) => code,
-                        Err(_) => self.get_google_auth_code().await,
-                    };
-
-                    let redirect_port: String = env::var(REDIRECT_PORT_ENV).unwrap();
-
-                    google_oauth2_token_request_body = Box::new(GoogleOAuth2CodeTokenRequest {
-                        client_id,
-                        client_secret,
-                        code,
-                        code_verifier: None,
-                        grant_type: google_oauth2_request::GrantType::AuthorizationCode,
-                        redirect_uri: format!("{}{}", "http://127.0.0.1:", &redirect_port),
-                    });
-                }
+        let google_oauth2_token_request_body: Box<dyn ToKeyValueTuples>;
+        let refresh_token_found: bool;
+        match read_value_from_file(GOOGLE_REFRESH_TOKEN_FILENAME) {
+            // Refresh Token already present, so use it to get new access token
+            Ok(refresh_token) => {
+                refresh_token_found = true;
+                google_oauth2_token_request_body = Box::new(GoogleOAuth2RefreshTokenRequest {
+                    client_id,
+                    client_secret,
+                    grant_type: google_oauth2_request::GrantType::RefreshToken,
+                    refresh_token,
+                });
             }
+            // No refresh token found, so use freshly generated authorization code from environment to generate access_token and refresh_token
+            Err(_) => {
+                refresh_token_found = false;
+                let code: String = match env::var(GOOGLE_AUTHORIZATION_CODE_ENV) {
+                    Ok(code) => code,
+                    Err(_) => self.get_google_auth_code().await,
+                };
 
-            let res: reqwest::Response = client
-                .post(GOOGLE_OAUTH2_ACCESS_TOKEN_URL)
-                .form(&google_oauth2_token_request_body.to_key_value_tuples_vec())
-                .send()
-                .await
-                .unwrap();
+                let redirect_port: String = env::var(REDIRECT_PORT_ENV).unwrap();
 
-            match res.status().as_u16() {
-                200 => {
-                    let response_data = res.json::<GoogleOAuth2TokenResponse>().await.unwrap();
-                    if !refresh_token_found {
-                        let _ = write_value_to_file(
-                            GOOGLE_REFRESH_TOKEN_FILENAME,
-                            response_data.refresh_token.unwrap().as_str(),
-                        );
-                    }
-                    return response_data.access_token;
+                google_oauth2_token_request_body = Box::new(GoogleOAuth2CodeTokenRequest {
+                    client_id,
+                    client_secret,
+                    code,
+                    code_verifier: None,
+                    grant_type: google_oauth2_request::GrantType::AuthorizationCode,
+                    redirect_uri: format!("{}{}", "http://127.0.0.1:", &redirect_port),
+                });
+            }
+        }
+
+        let res: reqwest::Response = client
+            .post(GOOGLE_OAUTH2_ACCESS_TOKEN_URL)
+            .form(&google_oauth2_token_request_body.to_key_value_tuples_vec())
+            .send()
+            .await
+            .unwrap();
+
+        match res.status().as_u16() {
+            200 => {
+                let response_data = res.json::<GoogleOAuth2TokenResponse>().await.unwrap();
+                if !refresh_token_found {
+                    let _ = write_value_to_file(
+                        GOOGLE_REFRESH_TOKEN_FILENAME,
+                        response_data.refresh_token.unwrap().as_str(),
+                    );
                 }
-                400 => {
-                    let error_data: GoogleOAuth2TokenErrorResponse =
-                        res.json::<GoogleOAuth2TokenErrorResponse>().await.unwrap();
-                    if refresh_token_found {
-                        let _ = remove_file(GOOGLE_REFRESH_TOKEN_FILENAME);
-                    }
-                    print!("{}", error_data.error);
-                    return self.get_google_access_token(fantoccini_client).await;
+                return Ok(response_data.access_token);
+            }
+            400 => {
+                let error_data: GoogleOAuth2TokenErrorResponse =
+                    res.json::<GoogleOAuth2TokenErrorResponse>().await.unwrap();
+                if refresh_token_found {
+                    let _ = remove_file(GOOGLE_REFRESH_TOKEN_FILENAME);
                 }
-                _ => panic!(),
-            };
-        })
+                print!("{}", error_data.error);
+                return Err(());
+            }
+            _ => panic!(),
+        };
     }
 
     async fn get_google_auth_code(&self) -> String {

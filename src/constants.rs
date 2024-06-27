@@ -47,7 +47,6 @@ pub const GOOGLE_OAUTH2_ACCESS_TOKEN_URL: &str = "https://oauth2.googleapis.com/
 
 pub const GOOGLE_REFRESH_TOKEN_FILENAME: &str = "refresh_token.txt";
 pub const UPSTOX_ACCESS_TOKEN_FILENAME: &str = "access_token.txt";
-pub const UPSTOX_AUTH_CODE_FILENAME: &str = "auth_code.txt";
 
 pub const EMAIL_ID_ENV: &str = "EMAIL_ID";
 pub const GOOGLE_AUTHORIZATION_CODE_ENV: &str = "GOOGLE_AUTHORIZATION_CODE";

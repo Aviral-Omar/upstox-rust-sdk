@@ -1,107 +1,82 @@
 use {
     crate::{
-        constants::{
-            UPSTOX_ACCESS_TOKEN_FILENAME, UPSTOX_AUTH_CODE_FILENAME, USER_GET_PROFILE_ENDPOINT,
+        constants::{BASE_URL, UPSTOX_ACCESS_TOKEN_FILENAME},
+        models::{
+            error_response::ErrorResponse, success_response::SuccessResponse,
+            user::profile_response::ProfileResponse,
         },
         utils::{read_value_from_file, write_value_to_file},
     },
+    chrono::FixedOffset,
     reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
     std::sync::Arc,
-    tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
+    tokio::sync::{Mutex, MutexGuard},
+    tokio_cron_scheduler::{Job, JobScheduler},
 };
 
 #[derive(Debug)]
 pub struct ApiClient {
-    pub base_url: String,
     pub client: ReqwestClient,
     pub api_key: String,
-    pub token: Arc<RwLock<String>>,
-    pub authorized: bool,
+    token: Option<String>,
 }
 
 impl ApiClient {
-    pub async fn new(base_url: &str, api_key: &str, login_config: LoginConfig) -> ApiClient {
+    pub async fn new(
+        api_key: &str,
+        login_config: LoginConfig,
+    ) -> Result<Arc<Mutex<ApiClient>>, String> {
         // TODO get instruments
         // TODO integrate websockets and its options
-        // TODO auto login task
+        // TODO test auto login task
         let mut api_client: ApiClient = ApiClient {
-            base_url: base_url.to_string(),
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),
-            token: Arc::new(RwLock::new(String::new())),
-            authorized: false,
+            token: None,
         };
 
+        api_client.login(&login_config).await?;
+
+        let shared_api_client: Arc<Mutex<ApiClient>> = Arc::new(Mutex::new(api_client));
         if !login_config.authorize {
-            return api_client;
+            return Ok(shared_api_client);
         }
 
-        if let Ok(access_token) = read_value_from_file(UPSTOX_ACCESS_TOKEN_FILENAME) {
-            {
-                let mut w: RwLockWriteGuard<String> = api_client.token.write().await;
-                *w = access_token;
+        if let Some(automate_login_config) = login_config.automate_login_config {
+            if automate_login_config.schedule_login {
+                Self::schedule_auto_login(&shared_api_client, login_config).await;
             }
+        }
 
-            api_client.authorized = true;
-            let verify_response: Response =
-                Self::get(&api_client, USER_GET_PROFILE_ENDPOINT, true, None).await;
-            if verify_response.status().as_u16() == 200 {
-                println!("Using valid access token from file");
-                return api_client;
-            } else {
-                api_client.authorized = false;
-                println!("Access Token invalid");
+        Ok(shared_api_client)
+    }
+
+    async fn login(&mut self, login_config: &LoginConfig) -> Result<(), String> {
+        if let Ok(access_token) = read_value_from_file(UPSTOX_ACCESS_TOKEN_FILENAME) {
+            self.token = Some(access_token);
+            if self.verify_authorization().await {
+                return Ok(());
             }
         };
 
         if login_config.automate_login_config.is_none() {
-            panic!("Must provide automate_login_config for authorization.")
+            return Err("Must provide automate_login_config for authorization.".to_string());
         }
 
-        let automate_login_config: AutomateLoginConfig =
-            login_config.automate_login_config.unwrap();
+        let automate_login_config: &AutomateLoginConfig =
+            login_config.automate_login_config.as_ref().unwrap();
 
-        let mut auth_code: String = match read_value_from_file(UPSTOX_AUTH_CODE_FILENAME) {
-            Ok(code) => code,
-            Err(_) => Self::initiate_auth_flow(&mut api_client, &automate_login_config).await,
-        };
+        let auth_code: String = self.get_authorization_code(automate_login_config).await?;
 
-        let mut get_token_status: bool = Self::populate_token(&mut api_client, &auth_code).await;
-        if !get_token_status {
-            auth_code = Self::initiate_auth_flow(&mut api_client, &automate_login_config).await;
-            get_token_status = Self::populate_token(&mut api_client, &auth_code).await;
-            if !get_token_status {
-                panic!("Unable to authorize");
-            }
-        }
-        api_client.authorized = true;
-
-        api_client
-    }
-
-    async fn initiate_auth_flow(&mut self, automate_login_config: &AutomateLoginConfig) -> String {
-        let code: String = self.get_authorization_code(automate_login_config).await;
-        write_value_to_file(UPSTOX_AUTH_CODE_FILENAME, &code).unwrap();
-        code
-    }
-
-    async fn populate_token(&mut self, auth_code: &str) -> bool {
         match self.get_token(auth_code.to_string()).await {
             Ok(token_response) => {
-                let mut w: RwLockWriteGuard<String> = self.token.write().await;
-                *w = token_response.access_token;
-                write_value_to_file(UPSTOX_ACCESS_TOKEN_FILENAME, &w).unwrap();
-                true
+                self.token = Some(token_response.access_token);
+                write_value_to_file(UPSTOX_ACCESS_TOKEN_FILENAME, &self.token.as_ref().unwrap())
+                    .unwrap();
+                Ok(())
             }
-            Err(error_response) => {
-                if error_response.errors[0].error_code == "UDAPI100057" {
-                    println!("{}", error_response.errors[0].message);
-                    false
-                } else {
-                    panic!("{:?}", error_response.errors[0].message);
-                }
-            }
+            Err(error_response) => Err(error_response.errors[0].message.clone()),
         }
     }
 
@@ -179,8 +154,9 @@ impl ApiClient {
     where
         T: Serialize + ?Sized,
     {
-        let url: String = format!("{}{}", self.base_url, endpoint);
-        if authorized && !self.authorized {
+        let url: String = format!("{}{}", BASE_URL, endpoint);
+
+        if authorized && !self.token.is_some() {
             panic!(
                 "{}",
                 format!(
@@ -195,7 +171,7 @@ impl ApiClient {
             Method::POST => self.client.post(url),
             Method::PUT => self.client.put(url),
             Method::DELETE => self.client.delete(url),
-            _ => unreachable!(),
+            _ => panic!("Unsupported HTTP Method"),
         };
 
         if let Some(req_params) = params {
@@ -211,26 +187,69 @@ impl ApiClient {
         }
 
         if authorized {
-            let token: RwLockReadGuard<String> = self.token.read().await;
-            request = request.bearer_auth(&*token);
+            request = request.bearer_auth(&self.token.as_ref().unwrap());
         }
         request = request.header("Accept", "application/json");
         request.send().await.unwrap()
     }
+
+    async fn verify_authorization(&mut self) -> bool {
+        let verify_response: Result<SuccessResponse<ProfileResponse>, ErrorResponse> =
+            self.get_profile().await;
+        verify_response.map_or_else(
+            |_| {
+                println!("Access Token invalid");
+                false
+            },
+            |_| {
+                println!("Using valid access token from file");
+                true
+            },
+        )
+    }
+
+    async fn schedule_auto_login(
+        shared_api_client: &Arc<Mutex<ApiClient>>,
+        login_config: LoginConfig,
+    ) {
+        let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
+        scheduler.shutdown_on_ctrl_c();
+
+        let shared_api_client_clone: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client);
+        let job: Job = Job::new_async_tz(
+            "0 30 3 * * *",
+            FixedOffset::east_opt(19800).unwrap(),
+            move |_, _| {
+                let api_client: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client_clone);
+                let login_config: LoginConfig = login_config.clone();
+                Box::pin(async move {
+                    let mut client: MutexGuard<ApiClient> = api_client.lock().await;
+                    client.login(&login_config).await.unwrap();
+                })
+            },
+        )
+        .unwrap();
+
+        scheduler.add(job).await.unwrap();
+        scheduler.start().await.unwrap();
+    }
 }
 
+#[derive(Clone)]
 pub struct LoginConfig {
     pub authorize: bool,
     pub automate_login_config: Option<AutomateLoginConfig>,
 }
 
+#[derive(Clone, Copy)]
 pub struct AutomateLoginConfig {
     pub automate_login: bool,
+    pub schedule_login: bool, // At 3:30 AM IST daily
     pub automate_fetching_otp: bool,
     pub mail_provider: Option<MailProvider>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum MailProvider {
     Google,
 }
