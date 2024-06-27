@@ -8,7 +8,7 @@ pub struct HistoricalCandleDataRequest {
     )]
     pub instrument_key: String,
     #[validate(enumerate = ["1minute", "30minute", "day", "week", "month"])]
-    pub interval: String,
+    pub interval: String, // Can be 1minute, 30minute, day, week or month
     #[validate(
         pattern = r"^\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])$",
         message = "to_date format must be yyyy-mm-dd"

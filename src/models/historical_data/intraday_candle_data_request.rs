@@ -8,5 +8,5 @@ pub struct IntradayCandleDataRequest {
     )]
     pub instrument_key: String,
     #[validate(enumerate = ["1minute", "30minute"])]
-    pub interval: String,
+    pub interval: String, // Can be 1minute or 30minute
 }

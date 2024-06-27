@@ -8,5 +8,5 @@ pub struct OHLCQuotesRequest {
     )]
     pub instrument_key: String,
     #[validate(enumerate = ["1d", "I1", "I30"])]
-    pub interval: String,
+    pub interval: String, // Can be 1d, I1, I30
 }
