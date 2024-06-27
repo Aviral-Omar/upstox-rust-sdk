@@ -1,0 +1,57 @@
+use {
+    crate::models::{AssetType, Exchange, ExchangeSegment},
+    serde::{Deserialize, Serialize},
+};
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub enum InstrumentsResponse {
+    EquityResponse {
+        segment: ExchangeSegment,
+        name: String,
+        exchange: Exchange,
+        isin: String,
+        instrument_type: String,
+        instrument_key: String,
+        lot_size: u32,
+        freeze_quantity: f64,
+        exchange_token: String,
+        tick_size: f64,
+        trading_symbol: String,
+        short_name: String,
+        security_type: String,
+    },
+    DerivativeResponse {
+        weekly: Option<bool>,
+        segment: ExchangeSegment,
+        name: String,
+        exchange: Exchange,
+        expiry: u64,
+        instrument_type: String,
+        asset_symbol: String,
+        underlying_symbol: String,
+        instrument_key: String,
+        lot_size: u32,
+        freeze_quantity: f64,
+        exchange_token: String,
+        minimum_lot: u32,
+        asset_key: String,
+        underlying_key: String,
+        tick_size: f64,
+        asset_type: AssetType,
+        underlying_type: AssetType,
+        trading_symbol: String,
+        strike_price: f64,
+        last_trading_date: Option<u64>,
+        price_quote_unit: Option<String>,
+    },
+    IndexResponse {
+        segment: ExchangeSegment,
+        name: String,
+        exchange: Exchange,
+        instrument_type: String,
+        instrument_key: String,
+        exchange_token: Option<String>,
+        trading_symbol: String,
+    },
+}

@@ -2,15 +2,16 @@ use {
     crate::{
         constants::{BASE_URL, UPSTOX_ACCESS_TOKEN_FILENAME},
         models::{
-            error_response::ErrorResponse, success_response::SuccessResponse,
-            user::profile_response::ProfileResponse,
+            error_response::ErrorResponse, instruments::instruments_response::InstrumentsResponse,
+            success_response::SuccessResponse, user::profile_response::ProfileResponse,
+            ExchangeSegment,
         },
         utils::{read_value_from_file, write_value_to_file},
     },
     chrono::FixedOffset,
     reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
-    std::sync::Arc,
+    std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, MutexGuard},
     tokio_cron_scheduler::{Job, JobScheduler},
 };
@@ -20,12 +21,15 @@ pub struct ApiClient {
     pub client: ReqwestClient,
     pub api_key: String,
     token: Option<String>,
+    pub instruments: Option<HashMap<ExchangeSegment, HashMap<String, Vec<InstrumentsResponse>>>>,
 }
 
 impl ApiClient {
     pub async fn new(
         api_key: &str,
         login_config: LoginConfig,
+        fetch_instruments: bool,
+        schedule_refresh_instruments: bool,
     ) -> Result<Arc<Mutex<ApiClient>>, String> {
         // TODO get instruments
         // TODO integrate websockets and its options
@@ -34,21 +38,35 @@ impl ApiClient {
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),
             token: None,
+            instruments: None,
         };
 
         api_client.login(&login_config).await?;
 
         let shared_api_client: Arc<Mutex<ApiClient>> = Arc::new(Mutex::new(api_client));
+
+        let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
+        scheduler.shutdown_on_ctrl_c();
+
+        if fetch_instruments {
+            let mut api_client: MutexGuard<ApiClient> = shared_api_client.lock().await;
+            api_client.instruments =
+                Some(Self::parse_instruments(api_client.get_instruments().await?));
+            if schedule_refresh_instruments {
+                Self::schedule_refresh_instruments(&scheduler, &shared_api_client).await;
+            }
+        }
+
         if !login_config.authorize {
             return Ok(shared_api_client);
         }
 
         if let Some(automate_login_config) = login_config.automate_login_config {
             if automate_login_config.schedule_login {
-                Self::schedule_auto_login(&shared_api_client, login_config).await;
+                Self::schedule_auto_login(&scheduler, &shared_api_client, login_config).await;
             }
         }
-
+        scheduler.start().await.unwrap();
         Ok(shared_api_client)
     }
 
@@ -208,13 +226,34 @@ impl ApiClient {
         )
     }
 
+    async fn schedule_refresh_instruments(
+        scheduler: &JobScheduler,
+        shared_api_client: &Arc<Mutex<ApiClient>>,
+    ) {
+        let shared_api_client_clone: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client);
+        let job: Job = Job::new_async_tz(
+            "0 30 6 * * *",
+            FixedOffset::east_opt(19800).unwrap(),
+            move |_, _| {
+                let api_client: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client_clone);
+                Box::pin(async move {
+                    let mut client: MutexGuard<ApiClient> = api_client.lock().await;
+                    if let Ok(instruments) = client.get_instruments().await {
+                        client.instruments = Some(Self::parse_instruments(instruments));
+                    }
+                })
+            },
+        )
+        .unwrap();
+
+        scheduler.add(job).await.unwrap();
+    }
+
     async fn schedule_auto_login(
+        scheduler: &JobScheduler,
         shared_api_client: &Arc<Mutex<ApiClient>>,
         login_config: LoginConfig,
     ) {
-        let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
-        scheduler.shutdown_on_ctrl_c();
-
         let shared_api_client_clone: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client);
         let job: Job = Job::new_async_tz(
             "0 30 3 * * *",
@@ -231,7 +270,6 @@ impl ApiClient {
         .unwrap();
 
         scheduler.add(job).await.unwrap();
-        scheduler.start().await.unwrap();
     }
 }
 

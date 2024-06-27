@@ -4,6 +4,9 @@ pub const LOGIN_AUTHORIZE_ENDPOINT: &str = "/login/authorization/dialog";
 pub const LOGIN_GET_TOKEN_ENDPOINT: &str = "/login/authorization/token";
 pub const LOGOUT_ENDPOINT: &str = "/logout";
 
+pub const INSTRUMENTS_COMPLETE_URL: &str =
+    "https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz";
+
 pub const USER_GET_FUND_AND_MARGIN_ENDPOINT: &str = "/user/get-funds-and-margin";
 pub const USER_GET_PROFILE_ENDPOINT: &str = "/user/profile";
 
@@ -47,6 +50,8 @@ pub const GOOGLE_OAUTH2_ACCESS_TOKEN_URL: &str = "https://oauth2.googleapis.com/
 
 pub const GOOGLE_REFRESH_TOKEN_FILENAME: &str = "refresh_token.txt";
 pub const UPSTOX_ACCESS_TOKEN_FILENAME: &str = "access_token.txt";
+pub const INSTRUMENTS_ARCHIVE_FILENAME: &str = "complete.json.gz";
+pub const INSTRUMENTS_JSON_FILENAME: &str = "complete.json";
 
 pub const EMAIL_ID_ENV: &str = "EMAIL_ID";
 pub const GOOGLE_AUTHORIZATION_CODE_ENV: &str = "GOOGLE_AUTHORIZATION_CODE";

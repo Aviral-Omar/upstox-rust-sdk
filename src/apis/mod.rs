@@ -1,5 +1,6 @@
 pub mod charges;
 pub mod historical_data;
+pub mod instruments;
 pub mod login;
 pub mod market_information;
 pub mod market_quote;

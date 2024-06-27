@@ -1,6 +1,7 @@
 pub mod charges;
 pub mod error_response;
 pub mod historical_data;
+pub mod instruments;
 pub mod login;
 pub mod market_information;
 pub mod market_quote;
@@ -19,6 +20,30 @@ use {
         str::FromStr,
     },
 };
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum AssetType {
+    COM,
+    INDEX,
+    EQUITY,
+    CUR,
+    IRD,
+}
+
+#[derive(Deserialize, Serialize, Debug, Eq, Hash, Clone, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ExchangeSegment {
+    NseEq,
+    NseIndex,
+    NseFo,
+    NcdFo,
+    BseEq,
+    BseIndex,
+    BseFo,
+    BcdFo,
+    McxFo,
+}
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]

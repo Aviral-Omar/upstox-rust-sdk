@@ -1,34 +1,13 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum ExchangeSegment {
-    NseEq,
-    NseIndex,
-    NseFo,
-    NcdFo,
-    BseEq,
-    BseIndex,
-    BseFo,
-    BcdFo,
-    McxFo,
-}
+use {
+    crate::models::{AssetType, ExchangeSegment},
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum InstrumentType {
     CE,
     PE,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum AssetType {
-    COM,
-    INDEX,
-    EQUITY,
-    CUR,
-    IRD,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
