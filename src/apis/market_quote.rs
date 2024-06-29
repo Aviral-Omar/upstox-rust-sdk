@@ -13,14 +13,20 @@ use {
                 ohlc_quotes_request::OHLCQuotesRequest, ohlc_quotes_response::OHLCQuoteResponse,
             },
             success_response::SuccessResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
     std::collections::HashMap,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_full_market_quotes(
         &self,
         full_market_quotes_params: FullMarketQuotesRequest,

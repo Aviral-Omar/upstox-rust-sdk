@@ -16,12 +16,18 @@ use {
                 market_timings_response::MarketTimingResponse,
             },
             success_response::SuccessResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
     },
     serde_valid::Validate,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_market_holidays(
         &self,
         market_holidays_path_params: MarketHolidaysRequest,

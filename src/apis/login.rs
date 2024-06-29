@@ -2,11 +2,12 @@ use {
     crate::{
         client::{ApiClient, AutomateLoginConfig, MailProvider},
         constants::{
-            BASE_URL, EMAIL_ID_ENV, GOOGLE_AUTHORIZATION_CODE_ENV, GOOGLE_CLIENT_ID_ENV,
+            EMAIL_ID_ENV, GOOGLE_AUTHORIZATION_CODE_ENV, GOOGLE_CLIENT_ID_ENV,
             GOOGLE_CLIENT_SECRET_ENV, GOOGLE_IMAP_URL, GOOGLE_OAUTH2_ACCESS_TOKEN_URL,
             GOOGLE_OAUTH2_AUTH_URL, GOOGLE_REFRESH_TOKEN_FILENAME, LOGIN_AUTHORIZE_ENDPOINT,
             LOGIN_GET_TOKEN_ENDPOINT, LOGIN_PIN_ENV, LOGOUT_ENDPOINT, MOBILE_NUMBER_ENV,
-            REDIRECT_PORT_ENV, UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV, WEBDRIVER_SOCKET_ENV,
+            REDIRECT_PORT_ENV, REST_BASE_URL, UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV,
+            WEBDRIVER_SOCKET_ENV,
         },
         models::{
             error_response::ErrorResponse,
@@ -23,7 +24,9 @@ use {
                 token_response::TokenResponse,
             },
             success_response::SuccessResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         utils::{read_value_from_file, write_value_to_file, ToKeyValueTuples},
     },
     async_imap::{
@@ -67,7 +70,11 @@ impl Authenticator for &OAuth2 {
     }
 }
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_authorization_code(
         &self,
         automate_login_config: &AutomateLoginConfig,
@@ -81,7 +88,7 @@ impl ApiClient {
             response_type: ResponseType::Code,
         };
         let full_url: Url = Url::parse_with_params(
-            format!("{}{}", BASE_URL, LOGIN_AUTHORIZE_ENDPOINT).as_str(),
+            format!("{}{}", REST_BASE_URL, LOGIN_AUTHORIZE_ENDPOINT).as_str(),
             dialog_request_params.to_key_value_tuples_vec(),
         )
         .unwrap();

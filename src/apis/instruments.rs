@@ -4,7 +4,11 @@ use {
         constants::{
             INSTRUMENTS_ARCHIVE_FILENAME, INSTRUMENTS_COMPLETE_URL, INSTRUMENTS_JSON_FILENAME,
         },
-        models::{instruments::instruments_response::InstrumentsResponse, ExchangeSegment},
+        models::{
+            instruments::instruments_response::InstrumentsResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse, ExchangeSegment,
+        },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
     },
     flate2::read::GzDecoder,
     reqwest::{Client, Response},
@@ -16,7 +20,11 @@ use {
     tokio::fs,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_instruments(&self) -> Result<Vec<InstrumentsResponse>, String> {
         let client: &Client = &self.client;
         let archive_path: &str = INSTRUMENTS_ARCHIVE_FILENAME;

@@ -18,13 +18,19 @@ use {
                 trade_history_response::TradeHistoryResponse,
             },
             success_response::SuccessResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn place_order(
         &self,
         place_order_body: PlaceOrderRequest,

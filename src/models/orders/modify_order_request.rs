@@ -8,7 +8,7 @@ use {
 pub struct ModifyOrderRequest {
     /* For commodity - number of lots is accepted. For other Futures & Options and equities - number of units is accepted in multiples of the tick size. */
     #[validate(exclusive_minimum = 0, message = "quantity must be greater than 0")]
-    #[serde(skip_serializing_if = "Option::is_none")] // TODO add messages
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub quantity: Option<u32>,
     pub validity: ValidityType,
     #[validate(exclusive_minimum = 0.0, message = "price must be greater than 0.0")]

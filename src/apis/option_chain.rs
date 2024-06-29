@@ -11,13 +11,19 @@ use {
                 put_call_option_chain_response::OptionChainResponse,
             },
             success_response::SuccessResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_option_contracts(
         &self,
         option_contracts_params: OptionContractsRequest,

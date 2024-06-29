@@ -11,6 +11,7 @@ pub mod portfolio;
 pub mod success_response;
 pub mod trade_profit_and_loss;
 pub mod user;
+pub mod ws;
 
 use {
     crate::utils::serde_spaced_lowercase,

@@ -9,13 +9,19 @@ use {
             },
             error_response::ErrorResponse,
             success_response::SuccessResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_brokerage_details(
         &self,
         brokerage_details_params: BrokerageDetailsRequest,

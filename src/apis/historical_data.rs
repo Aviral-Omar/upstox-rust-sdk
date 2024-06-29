@@ -10,12 +10,18 @@ use {
                 intraday_candle_data_request::IntradayCandleDataRequest,
             },
             success_response::SuccessResponse,
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
     },
     serde_valid::Validate,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_historical_candle_data(
         &self,
         historical_candles_path_params: HistoricalCandleDataRequest,

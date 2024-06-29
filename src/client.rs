@@ -1,64 +1,114 @@
 use {
     crate::{
-        constants::{BASE_URL, UPSTOX_ACCESS_TOKEN_FILENAME},
+        constants::{REST_BASE_URL, UPSTOX_ACCESS_TOKEN_FILENAME},
         models::{
-            error_response::ErrorResponse, instruments::instruments_response::InstrumentsResponse,
-            success_response::SuccessResponse, user::profile_response::ProfileResponse,
+            error_response::ErrorResponse,
+            instruments::instruments_response::InstrumentsResponse,
+            success_response::SuccessResponse,
+            user::profile_response::ProfileResponse,
+            ws::{
+                portfolio_feed_request::PortfolioUpdateType,
+                portfolio_feed_response::PortfolioFeedResponse,
+            },
             ExchangeSegment,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         utils::{read_value_from_file, write_value_to_file},
+        ws_client::{MarketDataFeedClient, PortfolioFeedClient},
     },
     chrono::FixedOffset,
+    // ezsockets::Client as EzClient,
     reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
-    std::{collections::HashMap, sync::Arc},
-    tokio::sync::{Mutex, MutexGuard},
+    std::{
+        collections::{HashMap, HashSet},
+        sync::Arc,
+    },
+    tokio::{
+        sync::{Mutex, MutexGuard},
+        task::JoinHandle,
+    },
     tokio_cron_scheduler::{Job, JobScheduler},
 };
 
 #[derive(Debug)]
-pub struct ApiClient {
+pub struct ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub client: ReqwestClient,
     pub api_key: String,
     token: Option<String>,
     pub instruments: Option<HashMap<ExchangeSegment, HashMap<String, Vec<InstrumentsResponse>>>>,
+    pub portfolio_feed_client: Option<PortfolioFeedClient<F>>,
+    pub market_data_feed_client: Option<MarketDataFeedClient<G>>,
 }
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn new(
         api_key: &str,
         login_config: LoginConfig,
         fetch_instruments: bool,
         schedule_refresh_instruments: bool,
-    ) -> Result<Arc<Mutex<ApiClient>>, String> {
-        // TODO get instruments
+        ws_connect_config: WSConnectConfig<F, G>,
+    ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
+        // TODO move login and instruments methods from here to their own files
         // TODO integrate websockets and its options
-        // TODO test auto login task
-        let mut api_client: ApiClient = ApiClient {
+        // TODO test auto login task and schedule instruments
+        // TODO signal handling for WS
+        // TODO change market data feed callback type and model protobuf response
+        let api_client: ApiClient<F, G> = ApiClient {
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),
             token: None,
             instruments: None,
+            portfolio_feed_client: None,
+            market_data_feed_client: None,
         };
 
-        api_client.login(&login_config).await?;
+        let shared_api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::new(Mutex::new(api_client));
+        let mut tasks_vec: Vec<JoinHandle<()>> = Vec::<JoinHandle<()>>::new();
 
-        let shared_api_client: Arc<Mutex<ApiClient>> = Arc::new(Mutex::new(api_client));
+        if !login_config.authorize {
+            return Ok((shared_api_client, tasks_vec));
+        }
+
+        {
+            let mut api_client: MutexGuard<ApiClient<F, G>> = shared_api_client.lock().await;
+            api_client.login(&login_config).await?;
+
+            if ws_connect_config.connect_portfolio_stream {
+                let portfolio_feed_task: JoinHandle<()> = api_client
+                    .connect_portfolio_feed(
+                        ws_connect_config.portfolio_stream_update_types,
+                        ws_connect_config.portfolio_feed_callback,
+                    )
+                    .await?;
+                tasks_vec.push(portfolio_feed_task);
+            }
+            if ws_connect_config.connect_market_data_stream {
+                let market_data_feed_task: JoinHandle<()> = api_client
+                    .connect_market_data_feed(ws_connect_config.market_data_feed_callback)
+                    .await?;
+                tasks_vec.push(market_data_feed_task);
+            }
+        }
 
         let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
         scheduler.shutdown_on_ctrl_c();
 
         if fetch_instruments {
-            let mut api_client: MutexGuard<ApiClient> = shared_api_client.lock().await;
+            let mut api_client: MutexGuard<ApiClient<F, G>> = shared_api_client.lock().await;
             api_client.instruments =
                 Some(Self::parse_instruments(api_client.get_instruments().await?));
             if schedule_refresh_instruments {
                 Self::schedule_refresh_instruments(&scheduler, &shared_api_client).await;
             }
-        }
-
-        if !login_config.authorize {
-            return Ok(shared_api_client);
         }
 
         if let Some(automate_login_config) = login_config.automate_login_config {
@@ -67,7 +117,7 @@ impl ApiClient {
             }
         }
         scheduler.start().await.unwrap();
-        Ok(shared_api_client)
+        Ok((shared_api_client, tasks_vec))
     }
 
     async fn login(&mut self, login_config: &LoginConfig) -> Result<(), String> {
@@ -172,7 +222,7 @@ impl ApiClient {
     where
         T: Serialize + ?Sized,
     {
-        let url: String = format!("{}{}", BASE_URL, endpoint);
+        let url: String = format!("{}{}", REST_BASE_URL, endpoint);
 
         if authorized && !self.token.is_some() {
             panic!(
@@ -228,16 +278,16 @@ impl ApiClient {
 
     async fn schedule_refresh_instruments(
         scheduler: &JobScheduler,
-        shared_api_client: &Arc<Mutex<ApiClient>>,
+        shared_api_client: &Arc<Mutex<ApiClient<F, G>>>,
     ) {
-        let shared_api_client_clone: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client);
+        let shared_api_client_clone: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client);
         let job: Job = Job::new_async_tz(
             "0 30 6 * * *",
             FixedOffset::east_opt(19800).unwrap(),
             move |_, _| {
-                let api_client: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client_clone);
+                let api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client_clone);
                 Box::pin(async move {
-                    let mut client: MutexGuard<ApiClient> = api_client.lock().await;
+                    let mut client: MutexGuard<ApiClient<F, G>> = api_client.lock().await;
                     if let Ok(instruments) = client.get_instruments().await {
                         client.instruments = Some(Self::parse_instruments(instruments));
                     }
@@ -251,18 +301,18 @@ impl ApiClient {
 
     async fn schedule_auto_login(
         scheduler: &JobScheduler,
-        shared_api_client: &Arc<Mutex<ApiClient>>,
+        shared_api_client: &Arc<Mutex<ApiClient<F, G>>>,
         login_config: LoginConfig,
     ) {
-        let shared_api_client_clone: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client);
+        let shared_api_client_clone: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client);
         let job: Job = Job::new_async_tz(
             "0 30 3 * * *",
             FixedOffset::east_opt(19800).unwrap(),
             move |_, _| {
-                let api_client: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client_clone);
+                let api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client_clone);
                 let login_config: LoginConfig = login_config.clone();
                 Box::pin(async move {
-                    let mut client: MutexGuard<ApiClient> = api_client.lock().await;
+                    let mut client: MutexGuard<ApiClient<F, G>> = api_client.lock().await;
                     client.login(&login_config).await.unwrap();
                 })
             },
@@ -290,4 +340,16 @@ pub struct AutomateLoginConfig {
 #[derive(Clone, Copy)]
 pub enum MailProvider {
     Google,
+}
+
+pub struct WSConnectConfig<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
+    pub connect_portfolio_stream: bool,
+    pub connect_market_data_stream: bool,
+    pub portfolio_stream_update_types: Option<HashSet<PortfolioUpdateType>>,
+    pub portfolio_feed_callback: Option<F>,
+    pub market_data_feed_callback: Option<G>,
 }

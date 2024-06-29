@@ -16,13 +16,19 @@ use {
                 trades_charges_request::TradesChargesRequest,
                 trades_charges_response::TradesChargesResponse,
             },
+            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
+        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_pnl_report_metadata(
         &self,
         pnl_report_metadata_params: PnLReportMetaDataRequest,

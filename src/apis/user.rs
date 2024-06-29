@@ -9,11 +9,17 @@ use crate::{
             fund_and_margin_response::FundAndMarginResponse,
             profile_response::ProfileResponse,
         },
+        ws::portfolio_feed_response::PortfolioFeedResponse,
     },
+    protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
     utils::ToKeyValueTuples,
 };
 
-impl ApiClient {
+impl<F, G> ApiClient<F, G>
+where
+    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
+    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
     pub async fn get_profile(&self) -> Result<SuccessResponse<ProfileResponse>, ErrorResponse> {
         let res: reqwest::Response = self.get(USER_GET_PROFILE_ENDPOINT, true, None).await;
         match res.status().as_u16() {
