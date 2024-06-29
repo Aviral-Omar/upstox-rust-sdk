@@ -2,6 +2,7 @@ use {
     dotenvy::dotenv,
     futures::future::join_all,
     std::{collections::HashSet, env},
+    tokio::signal,
     upstox_rust_sdk::{
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
         constants::UPLINK_API_KEY_ENV,
@@ -57,7 +58,10 @@ async fn main() {
     .unwrap();
 
     let api_client: tokio::sync::MutexGuard<ApiClient<_, _>> = api_client.lock().await;
-    join_all(tasks_vec).await;
+    tokio::select! {
+        _ = join_all(tasks_vec) => {}
+        _ = signal::ctrl_c() => {}
+    };
     // println!(
     //     "{:?}",
     //     api_client

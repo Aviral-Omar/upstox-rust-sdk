@@ -17,7 +17,6 @@ use {
         ws_client::{MarketDataFeedClient, PortfolioFeedClient},
     },
     chrono::FixedOffset,
-    // ezsockets::Client as EzClient,
     reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
     std::{
@@ -58,10 +57,8 @@ where
         ws_connect_config: WSConnectConfig<F, G>,
     ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
         // TODO move login and instruments methods from here to their own files
-        // TODO integrate websockets and its options
+        // TODO test websockets
         // TODO test auto login task and schedule instruments
-        // TODO signal handling for WS
-        // TODO change market data feed callback type and model protobuf response
         let api_client: ApiClient<F, G> = ApiClient {
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),
