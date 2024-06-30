@@ -24,7 +24,7 @@ async fn main() {
             authorize: true,
             automate_login_config: Some(AutomateLoginConfig {
                 /* geckodriver or chromedriver binary must be running locally with port specified in env to use automatic login or schedule login.
-                ./geckodriver --binary "/home/aviralomar/.local/share/flatpak/exports/bin/org.mozilla.firefox" --profile-root "/home/aviralomar/.var/app/org.mozilla.firefox/cache/mozilla/firefox/cv70hco5.default-release" */
+                ./geckodriver --binary "~/.local/share/flatpak/exports/bin/org.mozilla.firefox" --profile-root "~/.var/app/org.mozilla.firefox/cache/mozilla/firefox/cv70hco5.default-release" */
 
                 // Either GOOGLE_AUTHORIZATION_CODE environment must not be set or must be recent if using for the first time or refresh_token.txt has been deleted
                 automate_login: true,
