@@ -8,7 +8,6 @@ async-imap = { version = "0.9.7", default-features = false, features = ["runtime
 async-native-tls = { version = "0.5.0", default-features = false, features = ["runtime-tokio"] }
 async-trait = "0.1.80"
 chrono = "0.4.38"
-dotenvy = "0.15.7"
 ezsockets = { version = "0.6.2", features = ["native-tls"] }
 fantoccini = "0.19.3"
 flate2 = "1.0.30"
@@ -24,7 +23,6 @@ serde_valid = "0.24.0"
 serde_with = "3.8.1"
 tokio = { version = "1.38.0", features = ["full"] }
 tokio-cron-scheduler = { version = "0.10.2", features = ["signal"]}
-tracing-subscriber = "0.3.18"
 url_open = "0.0.2"
 urlencoding = "2.1.3"
 

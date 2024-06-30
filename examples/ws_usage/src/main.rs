@@ -27,51 +27,44 @@ async fn main() {
     };
 
     let api_key: String = env::var(UPLINK_API_KEY_ENV).unwrap();
+    let (fetch_instruments, schedule_refresh_instruments) = (false, false);
+
+    // ApiClient with websockets connected and handler specified
     let (api_client, tasks_vec) = ApiClient::new(
         &api_key,
         LoginConfig {
             authorize: true,
             automate_login_config: Some(AutomateLoginConfig {
                 automate_login: true,
-                schedule_login: true,
+                schedule_login: false,
                 automate_fetching_otp: true,
                 mail_provider: Some(MailProvider::Google),
             }),
         },
-        false,
-        false,
+        fetch_instruments,
+        schedule_refresh_instruments,
+        /* Configuration to connect and handle websocket data. */
         WSConnectConfig {
             connect_portfolio_stream: true,
             connect_market_data_stream: true,
+            /* Select which portfolio data to fetch */
             portfolio_stream_update_types: Some(HashSet::from([
                 PortfolioUpdateType::Order,
                 PortfolioUpdateType::Position,
                 PortfolioUpdateType::Holding,
             ])),
+            /* Handle portfolio data feed */
             portfolio_feed_callback: Some(portfolio_feed_handler),
+            /* Handle market data feed */
             market_data_feed_callback: Some(market_data_feed_handler),
-            // portfolio_feed_callback: None::<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
-            // market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
         },
     )
     .await
     .unwrap();
 
-    let api_client: tokio::sync::MutexGuard<ApiClient<_, _>> = api_client.lock().await;
+    // This ensures that app continues running until the websockets die if connected or until SIGINT occurs
     tokio::select! {
         _ = join_all(tasks_vec) => {}
         _ = signal::ctrl_c() => {}
     };
-    // println!(
-    //     "{:?}",
-    //     api_client
-    //         .instruments
-    //         .as_ref()
-    //         .unwrap()
-    //         .get(&ExchangeSegment::NseIndex)
-    //         .unwrap()
-    //         .get("INDEX")
-    //         .unwrap()
-    // );
 }
-// ./geckodriver --binary "/home/aviralomar/.local/share/flatpak/exports/bin/org.mozilla.firefox" --profile-root "/home/aviralomar/.var/app/org.mozilla.firefox/cache/mozilla/firefox/cv70hco5.default-release"
