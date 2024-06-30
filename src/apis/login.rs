@@ -1,13 +1,13 @@
 use {
     crate::{
-        client::{ApiClient, AutomateLoginConfig, MailProvider},
+        client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider},
         constants::{
             EMAIL_ID_ENV, GOOGLE_AUTHORIZATION_CODE_ENV, GOOGLE_CLIENT_ID_ENV,
             GOOGLE_CLIENT_SECRET_ENV, GOOGLE_IMAP_URL, GOOGLE_OAUTH2_ACCESS_TOKEN_URL,
             GOOGLE_OAUTH2_AUTH_URL, GOOGLE_REFRESH_TOKEN_FILENAME, LOGIN_AUTHORIZE_ENDPOINT,
             LOGIN_GET_TOKEN_ENDPOINT, LOGIN_PIN_ENV, LOGOUT_ENDPOINT, MOBILE_NUMBER_ENV,
             REDIRECT_PORT_ENV, REST_BASE_URL, UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV,
-            WEBDRIVER_SOCKET_ENV,
+            UPSTOX_ACCESS_TOKEN_FILENAME, WEBDRIVER_SOCKET_ENV,
         },
         models::{
             error_response::ErrorResponse,
@@ -75,6 +75,34 @@ where
     F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
     G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
 {
+    pub(crate) async fn login(&mut self, login_config: &LoginConfig) -> Result<(), String> {
+        if let Ok(access_token) = read_value_from_file(UPSTOX_ACCESS_TOKEN_FILENAME) {
+            self.token = Some(access_token);
+            if self.verify_authorization().await {
+                return Ok(());
+            }
+        };
+
+        if login_config.automate_login_config.is_none() {
+            return Err("Must provide automate_login_config for authorization.".to_string());
+        }
+
+        let automate_login_config: &AutomateLoginConfig =
+            login_config.automate_login_config.as_ref().unwrap();
+
+        let auth_code: String = self.get_authorization_code(automate_login_config).await?;
+
+        match self.get_token(auth_code.to_string()).await {
+            Ok(token_response) => {
+                self.token = Some(token_response.access_token);
+                write_value_to_file(UPSTOX_ACCESS_TOKEN_FILENAME, &self.token.as_ref().unwrap())
+                    .unwrap();
+                Ok(())
+            }
+            Err(error_response) => Err(error_response.errors[0].message.clone()),
+        }
+    }
+
     pub async fn get_authorization_code(
         &self,
         automate_login_config: &AutomateLoginConfig,

@@ -1,6 +1,6 @@
 use {
     crate::{
-        constants::{REST_BASE_URL, UPSTOX_ACCESS_TOKEN_FILENAME},
+        constants::REST_BASE_URL,
         models::{
             error_response::ErrorResponse,
             instruments::instruments_response::InstrumentsResponse,
@@ -13,7 +13,6 @@ use {
             ExchangeSegment,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
-        utils::{read_value_from_file, write_value_to_file},
         ws_client::{MarketDataFeedClient, PortfolioFeedClient},
     },
     chrono::FixedOffset,
@@ -36,9 +35,9 @@ where
     F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
     G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
 {
-    pub client: ReqwestClient,
-    pub api_key: String,
-    token: Option<String>,
+    pub(crate) client: ReqwestClient,
+    pub(crate) api_key: String,
+    pub(crate) token: Option<String>,
     pub instruments: Option<HashMap<ExchangeSegment, HashMap<String, Vec<InstrumentsResponse>>>>,
     pub portfolio_feed_client: Option<PortfolioFeedClient<F>>,
     pub market_data_feed_client: Option<MarketDataFeedClient<G>>,
@@ -56,7 +55,6 @@ where
         schedule_refresh_instruments: bool,
         ws_connect_config: WSConnectConfig<F, G>,
     ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
-        // TODO move login and instruments methods from here to their own files
         // TODO test websockets
         // TODO test auto login task and schedule instruments
         let api_client: ApiClient<F, G> = ApiClient {
@@ -115,34 +113,6 @@ where
         }
         scheduler.start().await.unwrap();
         Ok((shared_api_client, tasks_vec))
-    }
-
-    async fn login(&mut self, login_config: &LoginConfig) -> Result<(), String> {
-        if let Ok(access_token) = read_value_from_file(UPSTOX_ACCESS_TOKEN_FILENAME) {
-            self.token = Some(access_token);
-            if self.verify_authorization().await {
-                return Ok(());
-            }
-        };
-
-        if login_config.automate_login_config.is_none() {
-            return Err("Must provide automate_login_config for authorization.".to_string());
-        }
-
-        let automate_login_config: &AutomateLoginConfig =
-            login_config.automate_login_config.as_ref().unwrap();
-
-        let auth_code: String = self.get_authorization_code(automate_login_config).await?;
-
-        match self.get_token(auth_code.to_string()).await {
-            Ok(token_response) => {
-                self.token = Some(token_response.access_token);
-                write_value_to_file(UPSTOX_ACCESS_TOKEN_FILENAME, &self.token.as_ref().unwrap())
-                    .unwrap();
-                Ok(())
-            }
-            Err(error_response) => Err(error_response.errors[0].message.clone()),
-        }
     }
 
     pub async fn get(
@@ -258,7 +228,7 @@ where
         request.send().await.unwrap()
     }
 
-    async fn verify_authorization(&mut self) -> bool {
+    pub(crate) async fn verify_authorization(&mut self) -> bool {
         let verify_response: Result<SuccessResponse<ProfileResponse>, ErrorResponse> =
             self.get_profile().await;
         verify_response.map_or_else(

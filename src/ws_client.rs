@@ -62,12 +62,6 @@ where
     async fn on_call(&mut self, _: Self::Call) -> Result<(), EzError> {
         Ok(())
     }
-
-    // async fn on_connect(&mut self) -> Result<(), EzError> {
-    //     // Handle connection events for the portfolio feed
-    //     println!("PortfolioFeedClient connected");
-    //     Ok(())
-    // }
 }
 
 #[async_trait]
@@ -109,12 +103,6 @@ where
             .text(serde_json::to_string(&market_data_feed_message).unwrap())?;
         Ok(())
     }
-
-    // async fn on_connect(&mut self) -> Result<(), EzError> {
-    //     // Handle connection events for the market data feed
-    //     println!("MarketDataFeedClient connected");
-    //     Ok(())
-    // }
 }
 
 impl<F, G> ApiClient<F, G>
