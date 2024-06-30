@@ -99,6 +99,15 @@ impl Display for Exchange {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum OrderVariety {
+    Simple,
+    AMO,
+    CO,
+    OCO,
+}
+
 #[derive(Debug)]
 pub enum OrderStatus {
     ValidationPending,

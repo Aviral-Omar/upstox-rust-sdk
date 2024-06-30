@@ -1,7 +1,7 @@
 use {
     crate::models::{
         orders::{OrderType, ValidityType},
-        OrderStatus, ProductType, TransactionType,
+        OrderStatus, OrderVariety, ProductType, TransactionType,
     },
     serde::{Deserialize, Serialize},
 };
@@ -31,7 +31,7 @@ pub struct OrderDetailsResponse {
     pub exchange_order_id: String,
     pub parent_order_id: Option<String>,
     pub order_id: String,
-    pub variety: String,
+    pub variety: OrderVariety,
     pub order_timestamp: String,
     pub exchange_timestamp: String,
     pub is_amo: bool,

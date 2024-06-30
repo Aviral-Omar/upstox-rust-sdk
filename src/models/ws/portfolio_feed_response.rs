@@ -2,7 +2,7 @@ use {
     crate::models::{
         orders::{OrderType, ValidityType},
         ws::portfolio_feed_request::PortfolioUpdateType,
-        Exchange, ExchangeSegment, OrderStatus, ProductType, TransactionType,
+        Exchange, ExchangeSegment, OrderStatus, OrderVariety, ProductType, TransactionType,
     },
     serde::{Deserialize, Serialize},
 };
@@ -53,7 +53,7 @@ pub enum PortfolioFeedResponse {
         exchange_order_id: String,
         parent_order_id: Option<String>,
         order_id: String,
-        variety: String,
+        variety: OrderVariety,
         order_timestamp: String,
         exchange_timestamp: Option<String>,
         is_amo: bool,
