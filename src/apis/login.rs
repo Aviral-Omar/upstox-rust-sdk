@@ -160,7 +160,7 @@ where
                         otp_sent_timestamp,
                         automate_login_config.mail_provider.clone().unwrap(),
                     )
-                    .await;
+                    .await?;
 
                 let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
                     fantoccini_client.lock().await;
@@ -260,12 +260,16 @@ where
         }
     }
 
-    async fn get_otp(&self, otp_sent_time: i64, mail_provider: MailProvider) -> String {
+    async fn get_otp(
+        &self,
+        otp_sent_time: i64,
+        mail_provider: MailProvider,
+    ) -> Result<String, String> {
         let email: String = env::var(EMAIL_ID_ENV).unwrap();
         let access_token: String = match mail_provider {
             MailProvider::Google => match self.get_google_access_token().await {
                 Ok(token) => token,
-                Err(_) => self.get_google_access_token().await.unwrap(),
+                Err(_) => self.get_google_access_token().await?, // TODO do not unwrap
             },
         };
 
@@ -352,7 +356,7 @@ where
 
                     let otp: &str = otp_element.text().next().unwrap();
 
-                    return otp.to_string();
+                    return Ok(otp.to_string());
                 }
             }
             sleep(Duration::from_millis(1000)).await;
@@ -386,7 +390,7 @@ where
         }
     }
 
-    async fn get_google_access_token(&self) -> Result<String, ()> {
+    async fn get_google_access_token(&self) -> Result<String, String> {
         let client: &reqwest::Client = &self.client;
 
         let client_id: String = env::var(GOOGLE_CLIENT_ID_ENV).unwrap();
@@ -450,8 +454,7 @@ where
                 if refresh_token_found {
                     let _ = remove_file(GOOGLE_REFRESH_TOKEN_FILENAME);
                 }
-                print!("{}", error_data.error);
-                return Err(());
+                return Err(error_data.error);
             }
             _ => panic!(),
         };
