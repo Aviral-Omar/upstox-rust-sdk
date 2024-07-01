@@ -1,7 +1,7 @@
 use {
     dotenvy::dotenv,
-    std::env,
-    tokio::sync::MutexGuard,
+    std::{env, io::Write},
+    tokio::{signal, sync::MutexGuard},
     upstox_rust_sdk::{
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
         constants::UPLINK_API_KEY_ENV,
@@ -45,21 +45,30 @@ async fn main() {
     .await
     .unwrap();
 
-    let api_client: MutexGuard<
-        ApiClient<
-            Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>,
-            Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>,
-        >,
-    > = api_client.lock().await;
-    print!(
-        "{:?}",
-        api_client
-            .instruments
-            .as_ref()
-            .unwrap()
-            .get(&ExchangeSegment::NseIndex)
-            .unwrap()
-            .get("INDEX")
-            .unwrap()
-    );
+    {
+        // Ensure that api_client mutex guard goes out of scope when no longer needed.
+        let api_client: MutexGuard<
+            ApiClient<
+                Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>,
+                Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>,
+            >,
+        > = api_client.lock().await;
+        print!(
+            "{:?}",
+            api_client
+                .instruments
+                .as_ref()
+                .unwrap()
+                .get(&ExchangeSegment::NseIndex)
+                .unwrap()
+                .get("INDEX")
+                .unwrap()
+        );
+        std::io::stdout().flush().unwrap();
+    }
+
+    // This ensures that app continues running until SIGINT occurs
+    tokio::select! {
+        _ = signal::ctrl_c() => {}
+    };
 }

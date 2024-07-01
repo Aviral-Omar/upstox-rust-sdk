@@ -49,6 +49,7 @@ where
                 File::open(archive_path).map_err(|_| "Failed to open archive".to_string())
             }
         }?;
+        println!("Instruments archive downloaded.");
 
         let mut archive: GzDecoder<File> = GzDecoder::new(archive_file);
         let mut output_file: File =

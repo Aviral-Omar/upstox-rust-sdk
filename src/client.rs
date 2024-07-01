@@ -57,8 +57,8 @@ where
         ws_connect_config: WSConnectConfig<F, G>,
     ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
         // TODO methods for ws authorized URI
-        // TODO test websockets
-        // TODO test auto login task and schedule instruments
+        // TODO test portfolio websockets
+        // TODO apis usage example
         let api_client: ApiClient<F, G> = ApiClient {
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),
@@ -72,6 +72,7 @@ where
         let mut tasks_vec: Vec<JoinHandle<()>> = Vec::<JoinHandle<()>>::new();
 
         let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
+        scheduler.start().await.unwrap();
         scheduler.shutdown_on_ctrl_c();
 
         if fetch_instruments {
@@ -113,7 +114,6 @@ where
                 Self::schedule_auto_login(&scheduler, &shared_api_client, login_config).await;
             }
         }
-        scheduler.start().await.unwrap();
         Ok((shared_api_client, tasks_vec))
     }
 
@@ -251,7 +251,7 @@ where
     ) {
         let shared_api_client_clone: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client);
         let job: Job = Job::new_async_tz(
-            "0 30 6 * * *",
+            "0 30 06 * * *",
             FixedOffset::east_opt(19800).unwrap(),
             move |_, _| {
                 let api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client_clone);
@@ -275,7 +275,7 @@ where
     ) {
         let shared_api_client_clone: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client);
         let job: Job = Job::new_async_tz(
-            "0 30 3 * * *",
+            "0 30 03 * * *",
             FixedOffset::east_opt(19800).unwrap(),
             move |_, _| {
                 let api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client_clone);
