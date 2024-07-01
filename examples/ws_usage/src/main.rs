@@ -7,10 +7,12 @@ use {
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
         constants::UPLINK_API_KEY_ENV,
         models::ws::{
+            market_data_feed_message::{MessageData, ModeType},
             portfolio_feed_request::PortfolioUpdateType,
             portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        ws_client::MarketDataCall,
     },
 };
 
@@ -61,6 +63,19 @@ async fn main() {
     )
     .await
     .unwrap();
+
+    let api_client = api_client.lock().await;
+    api_client
+        .send_market_data_feed_message(MarketDataCall::SubscribeInstrument(MessageData {
+            mode: ModeType::Full,
+            instrument_keys: vec![
+                "NSE_INDEX|NIFTY LARGEMID250".to_string(),
+                "NSE_INDEX|Nifty Auto".to_string(),
+                "NSE_INDEX|Nifty Midcap 50".to_string(),
+            ],
+        }))
+        .await
+        .unwrap();
 
     // This ensures that app continues running until the websockets die if connected or until SIGINT occurs
     tokio::select! {

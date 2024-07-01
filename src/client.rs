@@ -16,6 +16,7 @@ use {
         ws_client::{MarketDataFeedClient, PortfolioFeedClient},
     },
     chrono::FixedOffset,
+    ezsockets::Client as EzClient,
     reqwest::{Client as ReqwestClient, Method, RequestBuilder, Response},
     serde::Serialize,
     std::{
@@ -39,8 +40,8 @@ where
     pub(crate) api_key: String,
     pub(crate) token: Option<String>,
     pub instruments: Option<HashMap<ExchangeSegment, HashMap<String, Vec<InstrumentsResponse>>>>,
-    pub portfolio_feed_client: Option<PortfolioFeedClient<F>>,
-    pub market_data_feed_client: Option<MarketDataFeedClient<G>>,
+    pub portfolio_feed_client: Option<EzClient<PortfolioFeedClient<F>>>,
+    pub market_data_feed_client: Option<EzClient<MarketDataFeedClient<G>>>,
 }
 
 impl<F, G> ApiClient<F, G>
@@ -55,6 +56,7 @@ where
         schedule_refresh_instruments: bool,
         ws_connect_config: WSConnectConfig<F, G>,
     ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
+        // TODO methods for ws authorized URI
         // TODO test websockets
         // TODO test auto login task and schedule instruments
         let api_client: ApiClient<F, G> = ApiClient {
@@ -68,6 +70,18 @@ where
 
         let shared_api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::new(Mutex::new(api_client));
         let mut tasks_vec: Vec<JoinHandle<()>> = Vec::<JoinHandle<()>>::new();
+
+        let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
+        scheduler.shutdown_on_ctrl_c();
+
+        if fetch_instruments {
+            let mut api_client: MutexGuard<ApiClient<F, G>> = shared_api_client.lock().await;
+            api_client.instruments =
+                Some(Self::parse_instruments(api_client.get_instruments().await?));
+            if schedule_refresh_instruments {
+                Self::schedule_refresh_instruments(&scheduler, &shared_api_client).await;
+            }
+        }
 
         if !login_config.authorize {
             return Ok((shared_api_client, tasks_vec));
@@ -91,18 +105,6 @@ where
                     .connect_market_data_feed(ws_connect_config.market_data_feed_callback)
                     .await?;
                 tasks_vec.push(market_data_feed_task);
-            }
-        }
-
-        let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
-        scheduler.shutdown_on_ctrl_c();
-
-        if fetch_instruments {
-            let mut api_client: MutexGuard<ApiClient<F, G>> = shared_api_client.lock().await;
-            api_client.instruments =
-                Some(Self::parse_instruments(api_client.get_instruments().await?));
-            if schedule_refresh_instruments {
-                Self::schedule_refresh_instruments(&scheduler, &shared_api_client).await;
             }
         }
 

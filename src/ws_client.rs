@@ -87,7 +87,7 @@ where
 
     async fn on_call(&mut self, call: Self::Call) -> Result<(), EzError> {
         let market_data_feed_message: MarketDataFeedMessage = MarketDataFeedMessage {
-            guid: "".to_string(), // TODO check if this works
+            guid: "someguid".to_string(), // TODO check if this works
             method: match call {
                 MarketDataCall::SubscribeInstrument(_) => MethodType::Sub,
                 MarketDataCall::ChangeMode(_) => MethodType::ChangeMode,
@@ -99,8 +99,10 @@ where
                 MarketDataCall::UnsubscribeInstrument(data) => data,
             },
         };
-        self.handle
-            .text(serde_json::to_string(&market_data_feed_message).unwrap())?;
+
+        let message_text: String = serde_json::to_string(&market_data_feed_message).unwrap();
+        let message_binary: &[u8] = message_text.as_bytes();
+        self.handle.binary(message_binary)?;
         Ok(())
     }
 }
@@ -112,7 +114,7 @@ where
 {
     /* Default update type is order only */
     pub async fn connect_portfolio_feed(
-        &self,
+        &mut self,
         update_types: Option<HashSet<PortfolioUpdateType>>,
         callback: Option<F>,
     ) -> Result<JoinHandle<()>, String> {
@@ -151,8 +153,9 @@ where
             .authorized_redirect_uri;
 
         let config: ClientConfig = ClientConfig::new(Url::parse(&authorized_url).unwrap());
-        let (_handle, future) =
+        let (handle, future) =
             ezsockets::connect(|handle| PortfolioFeedClient { handle, callback }, config).await;
+        self.portfolio_feed_client = Some(handle);
 
         let feed_future: JoinHandle<()> = tokio::spawn(async move {
             future.await.unwrap();
@@ -161,7 +164,7 @@ where
     }
 
     pub async fn connect_market_data_feed(
-        &self,
+        &mut self,
         callback: Option<G>,
     ) -> Result<JoinHandle<()>, String> {
         let res: reqwest::Response = self
@@ -176,10 +179,10 @@ where
             .unwrap()
             .data
             .authorized_redirect_uri;
-
         let config: ClientConfig = ClientConfig::new(Url::parse(&authorized_url).unwrap());
-        let (_handle, future) =
+        let (handle, future) =
             ezsockets::connect(|handle| MarketDataFeedClient { handle, callback }, config).await;
+        self.market_data_feed_client = Some(handle);
 
         let feed_future: JoinHandle<()> = tokio::spawn(async move {
             future.await.unwrap();
@@ -192,7 +195,7 @@ where
         market_data_feed_message: MarketDataCall,
     ) -> Result<(), EzError> {
         if let Some(client) = &self.market_data_feed_client {
-            client.handle.call(market_data_feed_message)?;
+            client.call(market_data_feed_message)?;
         }
         Ok(())
     }

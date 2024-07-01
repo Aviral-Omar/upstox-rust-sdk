@@ -25,7 +25,7 @@ pub struct MarketDataFeedMessage {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct MessageData {
-    pub mode: String,
-    #[serde(alias = "instrumentKeys")]
-    pub instrument_keys: MethodType,
+    pub mode: ModeType,
+    #[serde(rename = "instrumentKeys")]
+    pub instrument_keys: Vec<String>,
 }
