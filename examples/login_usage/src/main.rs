@@ -1,6 +1,7 @@
 use {
     dotenvy::dotenv,
     std::env,
+    tokio::signal,
     upstox_rust_sdk::{
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
         constants::UPLINK_API_KEY_ENV,
@@ -47,4 +48,9 @@ async fn main() {
     )
     .await
     .unwrap();
+
+    // This ensures that app continues running until SIGINT occurs
+    tokio::select! {
+        _ = signal::ctrl_c() => {}
+    };
 }
