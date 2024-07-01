@@ -136,7 +136,7 @@ where
             let fantoccini_client: FantocciniClient = ClientBuilder::native()
                 .connect(&webdriver_socket)
                 .await
-                .expect("Failed to connect to WebDriver");
+                .map_err(|_| "Failed to connect to WebDriver".to_string())?;
             let fantoccini_client: Arc<Mutex<Option<FantocciniClient>>> =
                 Arc::new(Mutex::new(Some(fantoccini_client)));
 
