@@ -87,7 +87,7 @@ where
 
     async fn on_call(&mut self, call: Self::Call) -> Result<(), EzError> {
         let market_data_feed_message: MarketDataFeedMessage = MarketDataFeedMessage {
-            guid: "someguid".to_string(), // TODO check if this works
+            guid: "someguid".to_string(),
             method: match call {
                 MarketDataCall::SubscribeInstrument(_) => MethodType::Sub,
                 MarketDataCall::ChangeMode(_) => MethodType::ChangeMode,

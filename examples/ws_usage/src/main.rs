@@ -72,6 +72,7 @@ async fn main() {
                 "NSE_INDEX|NIFTY LARGEMID250".to_string(),
                 "NSE_INDEX|Nifty Auto".to_string(),
                 "NSE_INDEX|Nifty Midcap 50".to_string(),
+                "BSE_EQ|INE053F08288".to_string(),
             ],
         }))
         .await
