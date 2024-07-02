@@ -56,9 +56,7 @@ where
         schedule_refresh_instruments: bool,
         ws_connect_config: WSConnectConfig<F, G>,
     ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
-        // TODO methods for ws authorized URI
-        // TODO test portfolio websockets
-        // TODO apis usage example
+        // TODO replace print with tracing
         let api_client: ApiClient<F, G> = ApiClient {
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),

@@ -72,8 +72,7 @@ where
 {
     type Call = MarketDataCall;
 
-    async fn on_text(&mut self, text: String) -> Result<(), EzError> {
-        println!("Market Data message: {}", text);
+    async fn on_text(&mut self, _: String) -> Result<(), EzError> {
         Ok(())
     }
 
@@ -179,10 +178,10 @@ where
                     "order".to_string()
                 } else {
                     let mut iter: hash_set::Iter<PortfolioUpdateType> = types.iter();
-                    let mut temp: String = serde_json::to_string(iter.next().unwrap()).unwrap();
+                    let mut temp: String = iter.next().unwrap().to_string();
                     for val in iter {
                         temp.push_str(",");
-                        temp.push_str(&serde_json::to_string(val).unwrap());
+                        temp.push_str(&val.to_string());
                     }
                     temp
                 }
