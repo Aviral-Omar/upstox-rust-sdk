@@ -270,7 +270,7 @@ where
         let access_token: String = match mail_provider {
             MailProvider::Google => match self.get_google_access_token().await {
                 Ok(token) => token,
-                Err(_) => self.get_google_access_token().await?, // TODO do not unwrap
+                Err(_) => self.get_google_access_token().await?,
             },
         };
 
