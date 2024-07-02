@@ -28,6 +28,7 @@ use {
         task::JoinHandle,
     },
     tokio_cron_scheduler::{Job, JobScheduler},
+    tracing::info,
 };
 
 #[derive(Debug)]
@@ -56,7 +57,6 @@ where
         schedule_refresh_instruments: bool,
         ws_connect_config: WSConnectConfig<F, G>,
     ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
-        // TODO replace print with tracing
         let api_client: ApiClient<F, G> = ApiClient {
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),
@@ -233,11 +233,11 @@ where
             self.get_profile().await;
         verify_response.map_or_else(
             |_| {
-                println!("Access Token invalid");
+                info!("Upstox saved access token invalid");
                 false
             },
             |_| {
-                println!("Using valid access token from file");
+                info!("Using valid access token from file");
                 true
             },
         )

@@ -50,6 +50,7 @@ use {
         sync::{Mutex, MutexGuard},
         time::{sleep, Duration},
     },
+    tracing::debug,
     url_open::UrlOpen,
     urlencoding::decode,
 };
@@ -294,7 +295,7 @@ where
         let mut imap_session: Session<TlsStream<TcpStream>> =
             client.authenticate("XOAUTH2", &oauth2).await.unwrap();
 
-        println!("OTP Sent: {}", otp_sent_time);
+        debug!("OTP Sent: {}", otp_sent_time);
         loop {
             let inbox: Mailbox = imap_session.select("INBOX").await.unwrap();
             let msg_count: u32 = inbox.exists;
@@ -318,7 +319,7 @@ where
                 )
                 .unwrap()
                 .timestamp();
-                println!("Message Time: {}", msg_timestamp);
+                debug!("Mail Time: {}", msg_timestamp);
                 if msg_timestamp < otp_sent_time {
                     break;
                 }

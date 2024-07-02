@@ -18,6 +18,7 @@ use {
         io::{copy, Read},
     },
     tokio::fs,
+    tracing::info,
 };
 
 impl<F, G> ApiClient<F, G>
@@ -49,7 +50,7 @@ where
                 File::open(archive_path).map_err(|_| "Failed to open archive".to_string())
             }
         }?;
-        println!("Instruments archive downloaded.");
+        info!("Instruments archive downloaded");
 
         let mut archive: GzDecoder<File> = GzDecoder::new(archive_file);
         let mut output_file: File =
@@ -72,10 +73,7 @@ where
             .map_err(|_| "Failed to delete JSON file")?;
 
         let instruments_data: Vec<InstrumentsResponse> = serde_json::from_str(&json_content)
-            .map_err(|e| {
-                println!("{:?}", e);
-                "Failed to parse Instruments JSON".to_string()
-            })?;
+            .map_err(|_| "Failed to parse Instruments JSON".to_string())?;
         Ok(instruments_data)
     }
 

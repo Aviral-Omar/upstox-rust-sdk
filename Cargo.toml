@@ -23,6 +23,7 @@ serde_valid = "0.24.0"
 serde_with = "3.8.1"
 tokio = { version = "1.38.0", features = ["full"] }
 tokio-cron-scheduler = { version = "0.10.2", features = ["signal"]}
+tracing = "0.1.40"
 url_open = "0.0.2"
 urlencoding = "2.1.3"
 
