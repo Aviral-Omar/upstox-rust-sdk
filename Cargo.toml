@@ -2,6 +2,13 @@
 name = "upstox-rust-sdk"
 version = "0.1.0"
 edition = "2021"
+authors = ["Aviral Omar", "aviralomar0301@gmail.com"]
+categories = ["api-bindings", "asynchronous"]
+description = "SDK to access Upstox's Uplink v2 APIs programmatically"
+keywords = ["upstox", "uplink", "sdk"]
+license = "MPL-2.0"
+readme = "README.md"
+repository = "https://github.com/Aviral-Omar/upstox-rust-sdk"
 
 [dependencies]
 async-imap = { version = "0.9.7", default-features = false, features = ["runtime-tokio"] }
