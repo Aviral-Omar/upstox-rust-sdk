@@ -2,9 +2,10 @@ use {
     crate::{
         client::ApiClient,
         constants::{
-            ORDERS_MODIFY_ORDER_ENDPOINT, ORDERS_ORDER_BOOK_ENDPOINT,
-            ORDERS_ORDER_DETAILS_ENDPOINT, ORDERS_ORDER_TRADES_ENDPOINT,
-            ORDERS_PLACE_ORDER_ENDPOINT, ORDERS_TRADES_ENDPOINT, ORDERS_TRADE_HISTORY_ENDPOINT,
+            ORDERS_CANCEL_ORDER_ENDPOINT, ORDERS_MODIFY_ORDER_ENDPOINT, ORDERS_ORDER_BOOK_ENDPOINT,
+            ORDERS_ORDER_DETAILS_ENDPOINT, ORDERS_ORDER_HISTORY_ENDPOINT,
+            ORDERS_ORDER_TRADES_ENDPOINT, ORDERS_PLACE_ORDER_ENDPOINT, ORDERS_TRADES_ENDPOINT,
+            ORDERS_TRADE_HISTORY_ENDPOINT,
         },
         models::{
             error_response::ErrorResponse,
@@ -80,7 +81,7 @@ where
 
         let res: reqwest::Response = self
             .delete(
-                ORDERS_MODIFY_ORDER_ENDPOINT,
+                ORDERS_CANCEL_ORDER_ENDPOINT,
                 true,
                 Some(&cancel_order_params.to_key_value_tuples_vec()),
             )
@@ -123,7 +124,7 @@ where
 
         let res: reqwest::Response = self
             .get(
-                ORDERS_ORDER_DETAILS_ENDPOINT,
+                ORDERS_ORDER_HISTORY_ENDPOINT,
                 true,
                 Some(&order_history_params.to_key_value_tuples_vec()),
             )
