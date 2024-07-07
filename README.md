@@ -29,6 +29,7 @@ These environment variables are used optionally in the SDK depending on the feat
 - [`login-usage`](https://github.com/Aviral-Omar/upstox-rust-sdk/tree/main/examples/login_usage): Example on using login functionality to get access token, automating login, fetching OTP automatically, scheduling automatic re-login.
 - [`fetch-instruments`](https://github.com/Aviral-Omar/upstox-rust-sdk/tree/main/examples/fetch_instruments): Example on fetching available instruments on startup and refreshing them daily.
 - [`ws-usage`](https://github.com/Aviral-Omar/upstox-rust-sdk/tree/main/examples/ws_usage): Example on using websockets and passing callbacks to handle websocket data and handling app exit when using websockets.
+- [`api-usage`](https://github.com/Aviral-Omar/upstox-rust-sdk/tree/main/examples/api_usage): Example on using Upstox's REST API endpoints via the ApiClient.
 
 ## License
 
