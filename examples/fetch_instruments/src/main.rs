@@ -30,9 +30,9 @@ async fn main() {
                 mail_provider: Some(MailProvider::Google),
             }),
         },
-        /* Fetch all instruments data from UPSTOX and store it in the ApiClient. */
+        // Fetch all instruments data from UPSTOX and store it in the ApiClient.
         fetch_instruments,
-        /* Refresh instruments data daily at 6:30 AM. */
+        // Refresh instruments data daily at 6:30 AM.
         schedule_refresh_instruments,
         WSConnectConfig {
             connect_portfolio_stream: false,

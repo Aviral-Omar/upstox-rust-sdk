@@ -112,7 +112,7 @@ where
     F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
     G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
 {
-    /* Default update type is order only */
+    // Default update type is order only
     pub async fn connect_portfolio_feed(
         &mut self,
         update_types: Option<HashSet<PortfolioUpdateType>>,

@@ -45,19 +45,19 @@ async fn main() {
         },
         fetch_instruments,
         schedule_refresh_instruments,
-        /* Configuration to connect and handle websocket data. */
+        // Configuration to connect and handle websocket data.
         WSConnectConfig {
             connect_portfolio_stream: true,
             connect_market_data_stream: true,
-            /* Select which portfolio data to fetch */
+            // Select which portfolio data to fetch
             portfolio_stream_update_types: Some(HashSet::from([
                 PortfolioUpdateType::Order,
                 PortfolioUpdateType::Position,
                 PortfolioUpdateType::Holding,
             ])),
-            /* Handle portfolio data feed */
+            // Handle portfolio data feed
             portfolio_feed_callback: Some(portfolio_feed_handler),
-            /* Handle market data feed */
+            // Handle market data feed
             market_data_feed_callback: Some(market_data_feed_handler),
         },
     )

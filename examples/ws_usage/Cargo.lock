@@ -2599,6 +2599,7 @@ dependencies = [
  "serde_with",
  "tokio",
  "tokio-cron-scheduler",
+ "tracing",
  "url_open",
  "urlencoding",
 ]

@@ -9,7 +9,7 @@ use {
 
 #[derive(Serialize, Debug, Validate)]
 pub struct PlaceOrderRequest {
-    /* For commodity - number of lots is accepted. For other Futures & Options and equities - number of units is accepted in multiples of the tick size. */
+    // For commodity - number of lots is accepted. For other Futures & Options and equities - number of units is accepted in multiples of the tick size.
     #[validate(exclusive_minimum = 0, message = "quantity must be greater than 0")]
     pub quantity: u32,
     pub product: ProductType,
