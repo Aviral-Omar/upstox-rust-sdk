@@ -50,7 +50,7 @@ use {
         sync::{Mutex, MutexGuard},
         time::{sleep, Duration},
     },
-    tracing::debug,
+    tracing::info,
     url_open::UrlOpen,
     urlencoding::decode,
 };
@@ -131,8 +131,10 @@ where
                 );
             }
 
-            let login_pin: String = env::var(LOGIN_PIN_ENV).unwrap();
-            let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV).unwrap();
+            let login_pin: String = env::var(LOGIN_PIN_ENV)
+                .expect("Env variable LOGIN_PIN must be set to automate login");
+            let webdriver_socket: String = env::var(WEBDRIVER_SOCKET_ENV)
+                .expect("Env variable WEBDRIVER_SOCKET must be set to automate login");
 
             let fantoccini_client: FantocciniClient = ClientBuilder::native()
                 .connect(&webdriver_socket)
@@ -295,7 +297,7 @@ where
         let mut imap_session: Session<TlsStream<TcpStream>> =
             client.authenticate("XOAUTH2", &oauth2).await.unwrap();
 
-        debug!("OTP Sent: {}", otp_sent_time);
+        info!("OTP Sent: {}", otp_sent_time);
         loop {
             let inbox: Mailbox = imap_session.select("INBOX").await.unwrap();
             let msg_count: u32 = inbox.exists;
@@ -319,7 +321,7 @@ where
                 )
                 .unwrap()
                 .timestamp();
-                debug!("Mail Time: {}", msg_timestamp);
+                info!("Read mail with time: {}", msg_timestamp);
                 if msg_timestamp < otp_sent_time {
                     break;
                 }

@@ -22,7 +22,7 @@ use {
     },
 };
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum AssetType {
     COM,
@@ -72,7 +72,7 @@ pub enum SegmentType {
     MF,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Exchange {
     NSE,
