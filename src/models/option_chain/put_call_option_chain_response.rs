@@ -32,8 +32,8 @@ pub struct OptionData {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct OptionChainResponse {
     pub expiry: String,
-    pub pcr: f64,
-    pub strike_price: u64,
+    pub pcr: Option<f64>,
+    pub strike_price: f64,
     pub underlying_key: String,
     pub underlying_spot_price: f64,
     pub call_options: OptionData,

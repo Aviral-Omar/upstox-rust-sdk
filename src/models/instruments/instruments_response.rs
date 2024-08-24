@@ -3,7 +3,7 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum InstrumentsResponse {
     EquityResponse {
@@ -18,8 +18,8 @@ pub enum InstrumentsResponse {
         exchange_token: String,
         tick_size: f64,
         trading_symbol: String,
-        short_name: String,
-        security_type: String,
+        short_name: Option<String>,
+        security_type: Option<String>,
     },
     DerivativeResponse {
         weekly: Option<bool>,
