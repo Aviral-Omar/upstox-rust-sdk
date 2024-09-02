@@ -16,6 +16,7 @@ use {
             ws::portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
@@ -30,7 +31,10 @@ where
     pub async fn get_full_market_quotes(
         &self,
         full_market_quotes_params: FullMarketQuotesRequest,
-    ) -> Result<SuccessResponse<HashMap<String, FullMarketQuoteResponse>>, ErrorResponse> {
+    ) -> Result<
+        Result<SuccessResponse<HashMap<String, FullMarketQuoteResponse>>, ErrorResponse>,
+        RateLimitExceeded,
+    > {
         full_market_quotes_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -39,21 +43,24 @@ where
                 true,
                 Some(&full_market_quotes_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<HashMap<String, FullMarketQuoteResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_ohlc_quotes(
         &self,
         ohlc_quotes_params: OHLCQuotesRequest,
-    ) -> Result<SuccessResponse<HashMap<String, OHLCQuoteResponse>>, ErrorResponse> {
+    ) -> Result<
+        Result<SuccessResponse<HashMap<String, OHLCQuoteResponse>>, ErrorResponse>,
+        RateLimitExceeded,
+    > {
         ohlc_quotes_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -62,21 +69,24 @@ where
                 true,
                 Some(&ohlc_quotes_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<HashMap<String, OHLCQuoteResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_ltp_quotes(
         &self,
         ltp_quotes_params: LTPQuotesRequest,
-    ) -> Result<SuccessResponse<HashMap<String, LTPQuoteResponse>>, ErrorResponse> {
+    ) -> Result<
+        Result<SuccessResponse<HashMap<String, LTPQuoteResponse>>, ErrorResponse>,
+        RateLimitExceeded,
+    > {
         ltp_quotes_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -85,14 +95,14 @@ where
                 true,
                 Some(&ltp_quotes_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<HashMap<String, LTPQuoteResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }

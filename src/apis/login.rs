@@ -233,7 +233,8 @@ where
                 None,
                 Some(&token_request_form.to_key_value_tuples_vec()),
             )
-            .await;
+            .await
+            .unwrap();
 
         match res.status().as_u16() {
             200 => Ok(res.json::<TokenResponse>().await.unwrap()),
@@ -242,7 +243,7 @@ where
     }
 
     pub async fn logout(&self) -> Result<SuccessResponse<bool>, String> {
-        let res: reqwest::Response = self.delete(LOGOUT_ENDPOINT, true, None).await;
+        let res: reqwest::Response = self.delete(LOGOUT_ENDPOINT, true, None).await.unwrap();
         match res.status().as_u16() {
             200 => Ok(res.json::<SuccessResponse<bool>>().await.unwrap()),
             _ => Err("Unexpected error while logging out".to_string()),

@@ -12,6 +12,7 @@ use {
             ws::portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
@@ -25,7 +26,8 @@ where
     pub async fn get_brokerage_details(
         &self,
         brokerage_details_params: BrokerageDetailsRequest,
-    ) -> Result<SuccessResponse<BrokerageDetailsResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<BrokerageDetailsResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         brokerage_details_params.validate().unwrap();
         let res: reqwest::Response = self
             .get(
@@ -33,14 +35,14 @@ where
                 true,
                 Some(&brokerage_details_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<BrokerageDetailsResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }

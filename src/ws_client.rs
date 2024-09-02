@@ -13,6 +13,7 @@ use {
             },
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
     },
     async_trait::async_trait,
     ezsockets::{Client as EzClient, ClientConfig, ClientExt, Error as EzError},
@@ -121,6 +122,7 @@ where
         let authorized_url: String = self
             .get_authorized_portfolio_feed_endpoint(update_types)
             .await
+            .unwrap()
             .map_err(|_| "Failed to fetch Portfolio Feed WS URL".to_string())?
             .data
             .authorized_redirect_uri;
@@ -143,6 +145,7 @@ where
         let authorized_url: String = self
             .get_authorized_market_data_feed_endpoint()
             .await
+            .unwrap()
             .map_err(|_| "Failed to fetch Market Data Feed WS URL".to_string())?
             .data
             .authorized_redirect_uri;
@@ -171,7 +174,8 @@ where
     pub async fn get_authorized_portfolio_feed_endpoint(
         &self,
         update_types: Option<HashSet<PortfolioUpdateType>>,
-    ) -> Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         let update_types: String = match update_types {
             Some(types) => {
                 if types.is_empty() {
@@ -195,31 +199,32 @@ where
                 true,
                 Some(&vec![("update_types".to_string(), update_types)]),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<AuthorizeFeedResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_authorized_market_data_feed_endpoint(
         &self,
-    ) -> Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         let res: reqwest::Response = self
             .get(WS_MARKET_DATA_FEED_AUTHORIZE_ENDPOINT, true, None)
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<AuthorizeFeedResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }
 

@@ -13,6 +13,7 @@ use {
             ws::portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
     },
     serde_valid::Validate,
 };
@@ -25,7 +26,7 @@ where
     pub async fn get_historical_candle_data(
         &self,
         historical_candles_path_params: HistoricalCandleDataRequest,
-    ) -> Result<SuccessResponse<CandleDataResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<CandleDataResponse>, ErrorResponse>, RateLimitExceeded> {
         historical_candles_path_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -45,21 +46,21 @@ where
                 false,
                 None,
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<CandleDataResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_intraday_candle_data(
         &self,
         intraday_candles_path_params: IntradayCandleDataRequest,
-    ) -> Result<SuccessResponse<CandleDataResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<CandleDataResponse>, ErrorResponse>, RateLimitExceeded> {
         intraday_candles_path_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -74,14 +75,14 @@ where
                 false,
                 None,
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<CandleDataResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }

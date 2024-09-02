@@ -57,6 +57,10 @@ pub(super) const UPSTOX_ACCESS_TOKEN_FILENAME: &str = "access_token.txt";
 pub(super) const INSTRUMENTS_ARCHIVE_FILENAME: &str = "complete.json.gz";
 pub(super) const INSTRUMENTS_JSON_FILENAME: &str = "complete.json";
 
+pub(super) const RATE_LIMIT_PER_SECOND: usize = 25;
+pub(super) const RATE_LIMIT_PER_MINUTE: usize = 250;
+pub(super) const RATE_LIMIT_PER_THIRTY_MINUTES: usize = 1000;
+
 pub(super) const EMAIL_ID_ENV: &str = "EMAIL_ID";
 pub(super) const GOOGLE_AUTHORIZATION_CODE_ENV: &str = "GOOGLE_AUTHORIZATION_CODE";
 pub(super) const GOOGLE_CLIENT_ID_ENV: &str = "GOOGLE_CLIENT_ID";

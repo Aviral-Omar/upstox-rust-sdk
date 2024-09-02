@@ -306,7 +306,10 @@
 
 use {
     crate::{
-        constants::REST_BASE_URL,
+        constants::{
+            RATE_LIMIT_PER_MINUTE, RATE_LIMIT_PER_SECOND, RATE_LIMIT_PER_THIRTY_MINUTES,
+            REST_BASE_URL,
+        },
         models::{
             error_response::ErrorResponse,
             instruments::instruments_response::InstrumentsResponse,
@@ -319,6 +322,7 @@ use {
             ExchangeSegment,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::{ApiRateLimiter, RateLimitExceeded},
         ws_client::{MarketDataFeedClient, PortfolioFeedClient},
     },
     chrono::FixedOffset,
@@ -349,6 +353,7 @@ where
     pub instruments: Option<HashMap<ExchangeSegment, HashMap<String, Vec<InstrumentsResponse>>>>,
     pub portfolio_feed_client: Option<EzClient<PortfolioFeedClient<F>>>,
     pub market_data_feed_client: Option<EzClient<MarketDataFeedClient<G>>>,
+    pub rate_limiter: ApiRateLimiter,
 }
 
 impl<F, G> ApiClient<F, G>
@@ -370,6 +375,11 @@ where
             instruments: None,
             portfolio_feed_client: None,
             market_data_feed_client: None,
+            rate_limiter: ApiRateLimiter::new(
+                RATE_LIMIT_PER_SECOND,
+                RATE_LIMIT_PER_MINUTE,
+                RATE_LIMIT_PER_THIRTY_MINUTES,
+            ),
         };
 
         let shared_api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::new(Mutex::new(api_client));
@@ -426,7 +436,7 @@ where
         endpoint: &str,
         authorized: bool,
         params: Option<&Vec<(String, String)>>,
-    ) -> Response {
+    ) -> Result<Response, RateLimitExceeded> {
         self.request::<()>(Method::GET, endpoint, authorized, params, None, None)
             .await
     }
@@ -437,7 +447,7 @@ where
         authorized: bool,
         json_body: Option<&T>,
         form_body: Option<&Vec<(String, String)>>,
-    ) -> Response
+    ) -> Result<Response, RateLimitExceeded>
     where
         T: Serialize + ?Sized,
     {
@@ -458,7 +468,7 @@ where
         authorized: bool,
         json_body: Option<&T>,
         form_body: Option<&Vec<(String, String)>>,
-    ) -> Response
+    ) -> Result<Response, RateLimitExceeded>
     where
         T: Serialize + ?Sized,
     {
@@ -478,7 +488,7 @@ where
         endpoint: &str,
         authorized: bool,
         params: Option<&Vec<(String, String)>>,
-    ) -> Response {
+    ) -> Result<Response, RateLimitExceeded> {
         self.request::<()>(Method::DELETE, endpoint, authorized, params, None, None)
             .await
     }
@@ -491,10 +501,15 @@ where
         params: Option<&Vec<(String, String)>>,
         json_body: Option<&T>,
         form_body: Option<&Vec<(String, String)>>,
-    ) -> Response
+    ) -> Result<Response, RateLimitExceeded>
     where
         T: Serialize + ?Sized,
     {
+        let rate_limit_check_result: Option<RateLimitExceeded> =
+            self.rate_limiter.check_rate_limit(endpoint).await;
+        if rate_limit_check_result.is_some() {
+            return Err(rate_limit_check_result.unwrap());
+        }
         let url: String = format!("{}{}", REST_BASE_URL, endpoint);
 
         if authorized && !self.token.is_some() {
@@ -531,12 +546,12 @@ where
             request = request.bearer_auth(&self.token.as_ref().unwrap());
         }
         request = request.header("Accept", "application/json");
-        request.send().await.unwrap()
+        Ok(request.send().await.unwrap())
     }
 
     pub(crate) async fn verify_authorization(&mut self) -> bool {
         let verify_response: Result<SuccessResponse<ProfileResponse>, ErrorResponse> =
-            self.get_profile().await;
+            self.get_profile().await.unwrap();
         verify_response.map_or_else(
             |_| {
                 info!("Upstox saved access token invalid");

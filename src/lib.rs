@@ -8,5 +8,6 @@ pub mod client;
 pub mod constants;
 pub mod models;
 pub mod protos;
+pub mod rate_limiter;
 mod utils;
 pub mod ws_client;

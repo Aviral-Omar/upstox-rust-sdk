@@ -19,6 +19,7 @@ use {
             ws::portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
     },
     serde_valid::Validate,
 };
@@ -31,7 +32,8 @@ where
     pub async fn get_market_holidays(
         &self,
         market_holidays_path_params: MarketHolidaysRequest,
-    ) -> Result<SuccessResponse<Vec<MarketHolidayResponse>>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<Vec<MarketHolidayResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
         market_holidays_path_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -48,21 +50,22 @@ where
                 false,
                 None,
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<MarketHolidayResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_market_timings(
         &self,
         market_timings_path_params: MarketTimingsRequest,
-    ) -> Result<SuccessResponse<Vec<MarketTimingResponse>>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<Vec<MarketTimingResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
         market_timings_path_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -75,21 +78,22 @@ where
                 false,
                 None,
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<MarketTimingResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_exchange_status(
         &self,
         exchange_staus_path_params: ExchangeStatusRequest,
-    ) -> Result<SuccessResponse<ExchangeStatusResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<ExchangeStatusResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         let res: reqwest::Response = self
             .get(
                 format!(
@@ -100,14 +104,14 @@ where
                 true,
                 None,
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<ExchangeStatusResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }

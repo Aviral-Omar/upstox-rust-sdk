@@ -22,6 +22,7 @@ use {
             ws::portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
@@ -35,7 +36,7 @@ where
     pub async fn place_order(
         &self,
         place_order_body: PlaceOrderRequest,
-    ) -> Result<SuccessResponse<OrderResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<OrderResponse>, ErrorResponse>, RateLimitExceeded> {
         place_order_body.validate().unwrap();
         let res: reqwest::Response = self
             .post(
@@ -44,18 +45,18 @@ where
                 Some(&place_order_body.to_key_value_tuples_vec()),
                 None,
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res.json::<SuccessResponse<OrderResponse>>().await.unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn modify_order(
         &self,
         modify_order_body: ModifyOrderRequest,
-    ) -> Result<SuccessResponse<OrderResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<OrderResponse>, ErrorResponse>, RateLimitExceeded> {
         modify_order_body.validate().unwrap();
         let res: reqwest::Response = self
             .put(
@@ -64,18 +65,18 @@ where
                 Some(&modify_order_body.to_key_value_tuples_vec()),
                 None,
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res.json::<SuccessResponse<OrderResponse>>().await.unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn cancel_order(
         &self,
         order_id: String,
-    ) -> Result<SuccessResponse<OrderResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<OrderResponse>, ErrorResponse>, RateLimitExceeded> {
         let cancel_order_params: CancelOrderRequest = CancelOrderRequest { order_id };
         cancel_order_params.validate().unwrap();
 
@@ -85,18 +86,19 @@ where
                 true,
                 Some(&cancel_order_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res.json::<SuccessResponse<OrderResponse>>().await.unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_order_details(
         &self,
         order_details_params: OrderDetailsRequest,
-    ) -> Result<SuccessResponse<OrderDetailsResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<OrderDetailsResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         order_details_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -105,21 +107,22 @@ where
                 true,
                 Some(&order_details_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<OrderDetailsResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_order_history(
         &self,
         order_history_params: OrderDetailsRequest,
-    ) -> Result<SuccessResponse<Vec<OrderDetailsResponse>>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<Vec<OrderDetailsResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
         order_history_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -128,49 +131,52 @@ where
                 true,
                 Some(&order_history_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<OrderDetailsResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_order_book(
         &self,
-    ) -> Result<SuccessResponse<Vec<OrderDetailsResponse>>, ErrorResponse> {
-        let res: reqwest::Response = self.get(ORDERS_ORDER_BOOK_ENDPOINT, true, None).await;
+    ) -> Result<Result<SuccessResponse<Vec<OrderDetailsResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
+        let res: reqwest::Response = self.get(ORDERS_ORDER_BOOK_ENDPOINT, true, None).await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<OrderDetailsResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_trades(
         &self,
-    ) -> Result<SuccessResponse<Vec<TradeDetailsResponse>>, ErrorResponse> {
-        let res: reqwest::Response = self.get(ORDERS_TRADES_ENDPOINT, true, None).await;
+    ) -> Result<Result<SuccessResponse<Vec<TradeDetailsResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
+        let res: reqwest::Response = self.get(ORDERS_TRADES_ENDPOINT, true, None).await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<TradeDetailsResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_order_trades(
         &self,
         order_id: String,
-    ) -> Result<SuccessResponse<Vec<TradeDetailsResponse>>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<Vec<TradeDetailsResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
         let order_trades_params: OrderTradesRequest = OrderTradesRequest { order_id };
         order_trades_params.validate().unwrap();
 
@@ -180,21 +186,22 @@ where
                 true,
                 Some(&order_trades_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<TradeDetailsResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_trade_history(
         &self,
         trade_history_params: TradeHistoryRequest,
-    ) -> Result<SuccessResponse<Vec<TradeHistoryResponse>>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<Vec<TradeHistoryResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
         trade_history_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -203,14 +210,14 @@ where
                 true,
                 Some(&trade_history_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<TradeHistoryResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }

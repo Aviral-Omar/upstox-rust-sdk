@@ -14,6 +14,7 @@ use {
             ws::portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
@@ -27,7 +28,10 @@ where
     pub async fn get_option_contracts(
         &self,
         option_contracts_params: OptionContractsRequest,
-    ) -> Result<SuccessResponse<Vec<OptionContractResponse>>, ErrorResponse> {
+    ) -> Result<
+        Result<SuccessResponse<Vec<OptionContractResponse>>, ErrorResponse>,
+        RateLimitExceeded,
+    > {
         option_contracts_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -36,21 +40,22 @@ where
                 true,
                 Some(&option_contracts_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<OptionContractResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_option_chains(
         &self,
         option_chains_params: OptionChainRequest,
-    ) -> Result<SuccessResponse<Vec<OptionChainResponse>>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<Vec<OptionChainResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
         option_chains_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -59,14 +64,14 @@ where
                 true,
                 Some(&option_chains_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<OptionChainResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }

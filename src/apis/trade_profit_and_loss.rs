@@ -19,6 +19,7 @@ use {
             ws::portfolio_feed_response::PortfolioFeedResponse,
         },
         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
@@ -32,7 +33,8 @@ where
     pub async fn get_pnl_report_metadata(
         &self,
         pnl_report_metadata_params: PnLReportMetaDataRequest,
-    ) -> Result<SuccessResponse<PnLReportMetaDataResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<PnLReportMetaDataResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         pnl_report_metadata_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -41,21 +43,22 @@ where
                 true,
                 Some(&pnl_report_metadata_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<PnLReportMetaDataResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_pnl_report(
         &self,
         pnl_report_params: ProfitAndLossRequest,
-    ) -> Result<SuccessResponse<Vec<ProfitAndLossResponse>>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<Vec<ProfitAndLossResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
         pnl_report_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -64,21 +67,22 @@ where
                 true,
                 Some(&pnl_report_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<Vec<ProfitAndLossResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_trades_charges(
         &self,
         trades_charges_params: TradesChargesRequest,
-    ) -> Result<SuccessResponse<TradesChargesResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<TradesChargesResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         trades_charges_params.validate().unwrap();
 
         let res: reqwest::Response = self
@@ -87,14 +91,14 @@ where
                 true,
                 Some(&trades_charges_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<TradesChargesResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }

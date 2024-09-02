@@ -12,6 +12,7 @@ use crate::{
         ws::portfolio_feed_response::PortfolioFeedResponse,
     },
     protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+    rate_limiter::RateLimitExceeded,
     utils::ToKeyValueTuples,
 };
 
@@ -20,21 +21,24 @@ where
     F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
     G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
 {
-    pub async fn get_profile(&self) -> Result<SuccessResponse<ProfileResponse>, ErrorResponse> {
-        let res: reqwest::Response = self.get(USER_GET_PROFILE_ENDPOINT, true, None).await;
-        match res.status().as_u16() {
+    pub async fn get_profile(
+        &self,
+    ) -> Result<Result<SuccessResponse<ProfileResponse>, ErrorResponse>, RateLimitExceeded> {
+        let res: reqwest::Response = self.get(USER_GET_PROFILE_ENDPOINT, true, None).await?;
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<ProfileResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 
     pub async fn get_fund_and_margin(
         &self,
         segment: Option<SegmentType>,
-    ) -> Result<SuccessResponse<FundAndMarginResponse>, ErrorResponse> {
+    ) -> Result<Result<SuccessResponse<FundAndMarginResponse>, ErrorResponse>, RateLimitExceeded>
+    {
         let fund_and_margin_params: FundAndMarginRequest = FundAndMarginRequest { segment };
 
         let res: reqwest::Response = self
@@ -43,14 +47,14 @@ where
                 true,
                 Some(&fund_and_margin_params.to_key_value_tuples_vec()),
             )
-            .await;
+            .await?;
 
-        match res.status().as_u16() {
+        Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<FundAndMarginResponse>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        }
+        })
     }
 }
