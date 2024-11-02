@@ -38,6 +38,7 @@ pub enum ExchangeSegment {
     NseEq,
     NseIndex,
     NseFo,
+    NseCom,
     NcdFo,
     BseEq,
     BseIndex,

@@ -100,6 +100,11 @@ where
                     instrument_type,
                     ..
                 } => (segment.clone(), instrument_type.clone()),
+                InstrumentsResponse::CommodityResponse {
+                    segment,
+                    instrument_type,
+                    ..
+                } => (segment.clone(), instrument_type.clone()),
             };
 
             let segment_map: &mut HashMap<String, Vec<InstrumentsResponse>> =
