@@ -307,8 +307,8 @@
 use {
     crate::{
         constants::{
-            RATE_LIMIT_PER_MINUTE, RATE_LIMIT_PER_SECOND, RATE_LIMIT_PER_THIRTY_MINUTES,
-            REST_BASE_URL,
+            APIVersion, BaseUrlType, RATE_LIMIT_PER_MINUTE, RATE_LIMIT_PER_SECOND,
+            RATE_LIMIT_PER_THIRTY_MINUTES,
         },
         models::{
             error_response::ErrorResponse,
@@ -321,9 +321,13 @@ use {
             },
             ExchangeSegment,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        protos::{
+            market_data_feed::FeedResponse as MarketDataFeedResponse,
+            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
+        },
         rate_limiter::{ApiRateLimiter, RateLimitExceeded},
-        ws_client::{MarketDataFeedClient, PortfolioFeedClient},
+        utils::create_url,
+        ws_client::{MarketDataFeedClient, MarketDataFeedV3Client, PortfolioFeedClient},
     },
     chrono::FixedOffset,
     ezsockets::Client as EzClient,
@@ -341,40 +345,38 @@ use {
     tracing::info,
 };
 
-#[derive(Debug)]
-pub struct ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+pub struct ApiClient {
     pub(crate) client: ReqwestClient,
     pub(crate) api_key: String,
     pub(crate) token: Option<String>,
     pub instruments: Option<HashMap<ExchangeSegment, HashMap<String, Vec<InstrumentsResponse>>>>,
-    pub portfolio_feed_client: Option<EzClient<PortfolioFeedClient<F>>>,
-    pub market_data_feed_client: Option<EzClient<MarketDataFeedClient<G>>>,
+    pub portfolio_feed_client:
+        Option<EzClient<PortfolioFeedClient<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>>>,
+    pub market_data_feed_client: Option<
+        EzClient<MarketDataFeedClient<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>>,
+    >,
+    pub market_data_feed_v3_client: Option<
+        EzClient<MarketDataFeedV3Client<Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>>>,
+    >,
     pub rate_limiter: ApiRateLimiter,
 }
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn new(
         api_key: &str,
         login_config: LoginConfig,
         fetch_instruments: bool,
         schedule_refresh_instruments: bool,
-        ws_connect_config: WSConnectConfig<F, G>,
-    ) -> Result<(Arc<Mutex<ApiClient<F, G>>>, Vec<JoinHandle<()>>), String> {
-        let api_client: ApiClient<F, G> = ApiClient {
+        ws_connect_config: WSConnectConfig,
+    ) -> Result<(Arc<Mutex<ApiClient>>, Vec<JoinHandle<()>>), String> {
+        let api_client = ApiClient {
             client: ReqwestClient::new(),
             api_key: api_key.to_string(),
             token: None,
             instruments: None,
             portfolio_feed_client: None,
             market_data_feed_client: None,
+            market_data_feed_v3_client: None,
             rate_limiter: ApiRateLimiter::new(
                 RATE_LIMIT_PER_SECOND,
                 RATE_LIMIT_PER_MINUTE,
@@ -382,15 +384,15 @@ where
             ),
         };
 
-        let shared_api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::new(Mutex::new(api_client));
-        let mut tasks_vec: Vec<JoinHandle<()>> = Vec::<JoinHandle<()>>::new();
+        let shared_api_client = Arc::new(Mutex::new(api_client));
+        let mut tasks_vec = Vec::<JoinHandle<()>>::new();
 
-        let scheduler: JobScheduler = JobScheduler::new().await.unwrap();
+        let scheduler = JobScheduler::new().await.unwrap();
         scheduler.start().await.unwrap();
         scheduler.shutdown_on_ctrl_c();
 
         if fetch_instruments {
-            let mut api_client: MutexGuard<ApiClient<F, G>> = shared_api_client.lock().await;
+            let mut api_client = shared_api_client.lock().await;
             api_client.instruments =
                 Some(Self::parse_instruments(api_client.get_instruments().await?));
             if schedule_refresh_instruments {
@@ -403,11 +405,11 @@ where
         }
 
         {
-            let mut api_client: MutexGuard<ApiClient<F, G>> = shared_api_client.lock().await;
+            let mut api_client = shared_api_client.lock().await;
             api_client.login(&login_config).await?;
 
             if ws_connect_config.connect_portfolio_stream {
-                let portfolio_feed_task: JoinHandle<()> = api_client
+                let portfolio_feed_task = api_client
                     .connect_portfolio_feed(
                         ws_connect_config.portfolio_stream_update_types,
                         ws_connect_config.portfolio_feed_callback,
@@ -416,10 +418,16 @@ where
                 tasks_vec.push(portfolio_feed_task);
             }
             if ws_connect_config.connect_market_data_stream {
-                let market_data_feed_task: JoinHandle<()> = api_client
+                let market_data_feed_task = api_client
                     .connect_market_data_feed(ws_connect_config.market_data_feed_callback)
                     .await?;
                 tasks_vec.push(market_data_feed_task);
+            }
+            if ws_connect_config.connect_market_data_stream_v3 {
+                let market_data_feed_v3_task = api_client
+                    .connect_market_data_feed_v3(ws_connect_config.market_data_feed_v3_callback)
+                    .await?;
+                tasks_vec.push(market_data_feed_v3_task);
             }
         }
 
@@ -431,22 +439,35 @@ where
         Ok((shared_api_client, tasks_vec))
     }
 
-    pub async fn get(
+    pub(crate) async fn get(
         &self,
         endpoint: &str,
         authorized: bool,
         params: Option<&Vec<(String, String)>>,
+        base_url_type: BaseUrlType,
+        api_version: APIVersion,
     ) -> Result<Response, RateLimitExceeded> {
-        self.request::<()>(Method::GET, endpoint, authorized, params, None, None)
-            .await
+        self.request::<()>(
+            Method::GET,
+            endpoint,
+            authorized,
+            params,
+            None,
+            None,
+            base_url_type,
+            api_version,
+        )
+        .await
     }
 
-    pub async fn post<T>(
+    pub(crate) async fn post<T>(
         &self,
         endpoint: &str,
         authorized: bool,
         json_body: Option<&T>,
         form_body: Option<&Vec<(String, String)>>,
+        base_url_type: BaseUrlType,
+        api_version: APIVersion,
     ) -> Result<Response, RateLimitExceeded>
     where
         T: Serialize + ?Sized,
@@ -458,16 +479,20 @@ where
             None,
             json_body,
             form_body,
+            base_url_type,
+            api_version,
         )
         .await
     }
 
-    pub async fn put<T>(
+    pub(crate) async fn put<T>(
         &self,
         endpoint: &str,
         authorized: bool,
         json_body: Option<&T>,
         form_body: Option<&Vec<(String, String)>>,
+        base_url_type: BaseUrlType,
+        api_version: APIVersion,
     ) -> Result<Response, RateLimitExceeded>
     where
         T: Serialize + ?Sized,
@@ -479,18 +504,35 @@ where
             None,
             json_body,
             form_body,
+            base_url_type,
+            api_version,
         )
         .await
     }
 
-    pub async fn delete(
+    pub(crate) async fn delete<T>(
         &self,
         endpoint: &str,
         authorized: bool,
         params: Option<&Vec<(String, String)>>,
-    ) -> Result<Response, RateLimitExceeded> {
-        self.request::<()>(Method::DELETE, endpoint, authorized, params, None, None)
-            .await
+        json_body: Option<&T>,
+        base_url_type: BaseUrlType,
+        api_version: APIVersion,
+    ) -> Result<Response, RateLimitExceeded>
+    where
+        T: Serialize + ?Sized,
+    {
+        self.request::<T>(
+            Method::DELETE,
+            endpoint,
+            authorized,
+            params,
+            json_body,
+            None,
+            base_url_type,
+            api_version,
+        )
+        .await
     }
 
     async fn request<T>(
@@ -501,6 +543,8 @@ where
         params: Option<&Vec<(String, String)>>,
         json_body: Option<&T>,
         form_body: Option<&Vec<(String, String)>>,
+        base_url_type: BaseUrlType,
+        api_version: APIVersion,
     ) -> Result<Response, RateLimitExceeded>
     where
         T: Serialize + ?Sized,
@@ -510,7 +554,7 @@ where
         if rate_limit_check_result.is_some() {
             return Err(rate_limit_check_result.unwrap());
         }
-        let url: String = format!("{}{}", REST_BASE_URL, endpoint);
+        let url: String = create_url(base_url_type, api_version, endpoint);
 
         if authorized && !self.token.is_some() {
             panic!(
@@ -566,16 +610,16 @@ where
 
     async fn schedule_refresh_instruments(
         scheduler: &JobScheduler,
-        shared_api_client: &Arc<Mutex<ApiClient<F, G>>>,
+        shared_api_client: &Arc<Mutex<ApiClient>>,
     ) {
-        let shared_api_client_clone: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client);
+        let shared_api_client_clone: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client);
         let job: Job = Job::new_async_tz(
             "0 30 06 * * *",
             FixedOffset::east_opt(19800).unwrap(),
             move |_, _| {
-                let api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client_clone);
+                let api_client: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client_clone);
                 Box::pin(async move {
-                    let mut client: MutexGuard<ApiClient<F, G>> = api_client.lock().await;
+                    let mut client: MutexGuard<ApiClient> = api_client.lock().await;
                     if let Ok(instruments) = client.get_instruments().await {
                         client.instruments = Some(Self::parse_instruments(instruments));
                     }
@@ -589,18 +633,18 @@ where
 
     async fn schedule_auto_login(
         scheduler: &JobScheduler,
-        shared_api_client: &Arc<Mutex<ApiClient<F, G>>>,
+        shared_api_client: &Arc<Mutex<ApiClient>>,
         login_config: LoginConfig,
     ) {
-        let shared_api_client_clone: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client);
+        let shared_api_client_clone: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client);
         let job: Job = Job::new_async_tz(
             "0 30 03 * * *",
             FixedOffset::east_opt(19800).unwrap(),
             move |_, _| {
-                let api_client: Arc<Mutex<ApiClient<F, G>>> = Arc::clone(&shared_api_client_clone);
+                let api_client: Arc<Mutex<ApiClient>> = Arc::clone(&shared_api_client_clone);
                 let login_config: LoginConfig = login_config.clone();
                 Box::pin(async move {
-                    let mut client: MutexGuard<ApiClient<F, G>> = api_client.lock().await;
+                    let mut client: MutexGuard<ApiClient> = api_client.lock().await;
                     client.login(&login_config).await.unwrap();
                 })
             },
@@ -630,14 +674,13 @@ pub enum MailProvider {
     Google,
 }
 
-pub struct WSConnectConfig<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+pub struct WSConnectConfig {
     pub connect_portfolio_stream: bool,
     pub connect_market_data_stream: bool,
+    pub connect_market_data_stream_v3: bool,
     pub portfolio_stream_update_types: Option<HashSet<PortfolioUpdateType>>,
-    pub portfolio_feed_callback: Option<F>,
-    pub market_data_feed_callback: Option<G>,
+    pub portfolio_feed_callback: Option<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
+    pub market_data_feed_callback: Option<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
+    pub market_data_feed_v3_callback:
+        Option<Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>>,
 }

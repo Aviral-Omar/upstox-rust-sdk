@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    crate::models::ResponseSummary,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Page {
@@ -10,7 +13,8 @@ pub struct Page {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Metadata {
-    pub page: Page,
+    pub page: Option<Page>,
+    pub latency: Option<u32>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -20,4 +24,5 @@ pub struct SuccessResponse<T> {
     pub errors: Option<()>,
     #[serde(alias = "metaData")]
     pub metadata: Option<Metadata>,
+    pub summary: Option<ResponseSummary>,
 }

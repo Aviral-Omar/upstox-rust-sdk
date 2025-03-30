@@ -2,8 +2,8 @@ use {
     crate::{
         client::ApiClient,
         constants::{
-            PORTFOLIO_CONVERT_POSITIONS_ENDPOINT, PORTFOLIO_HOLDINGS_ENDPOINT,
-            PORTFOLIO_POSITIONS_ENDPOINT,
+            APIVersion, BaseUrlType, PORTFOLIO_CONVERT_POSITIONS_ENDPOINT,
+            PORTFOLIO_HOLDINGS_ENDPOINT, PORTFOLIO_POSITIONS_ENDPOINT,
         },
         models::{
             error_response::ErrorResponse,
@@ -13,24 +13,26 @@ use {
                 holdings_response::HoldingsResponse, positions_response::PositionsResponse,
             },
             success_response::SuccessResponse,
-            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         rate_limiter::RateLimitExceeded,
     },
     serde_valid::Validate,
 };
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn get_positions(
         &self,
     ) -> Result<Result<SuccessResponse<Vec<PositionsResponse>>, ErrorResponse>, RateLimitExceeded>
     {
-        let res: reqwest::Response = self.get(PORTFOLIO_POSITIONS_ENDPOINT, true, None).await?;
+        let res: reqwest::Response = self
+            .get(
+                PORTFOLIO_POSITIONS_ENDPOINT,
+                true,
+                None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
+            )
+            .await?;
 
         Ok(match res.status().as_u16() {
             200 => Ok(res
@@ -54,6 +56,8 @@ where
                 true,
                 Some(convert_positions_body),
                 None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -70,7 +74,15 @@ where
         &self,
     ) -> Result<Result<SuccessResponse<Vec<HoldingsResponse>>, ErrorResponse>, RateLimitExceeded>
     {
-        let res: reqwest::Response = self.get(PORTFOLIO_HOLDINGS_ENDPOINT, true, None).await?;
+        let res: reqwest::Response = self
+            .get(
+                PORTFOLIO_HOLDINGS_ENDPOINT,
+                true,
+                None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
+            )
+            .await?;
 
         Ok(match res.status().as_u16() {
             200 => Ok(res

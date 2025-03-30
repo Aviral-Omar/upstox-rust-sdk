@@ -2,8 +2,8 @@ use {
     crate::{
         client::ApiClient,
         constants::{
-            MARKET_INFO_EXCHANGE_STATUS_ENDPOINT, MARKET_INFO_HOLIDAYS_ENDPOINT,
-            MARKET_INFO_TIMINGS_ENDPOINT,
+            APIVersion, BaseUrlType, MARKET_INFO_EXCHANGE_STATUS_ENDPOINT,
+            MARKET_INFO_HOLIDAYS_ENDPOINT, MARKET_INFO_TIMINGS_ENDPOINT,
         },
         models::{
             error_response::ErrorResponse,
@@ -16,19 +16,13 @@ use {
                 market_timings_response::MarketTimingResponse,
             },
             success_response::SuccessResponse,
-            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         rate_limiter::RateLimitExceeded,
     },
     serde_valid::Validate,
 };
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn get_market_holidays(
         &self,
         market_holidays_path_params: MarketHolidaysRequest,
@@ -49,6 +43,8 @@ where
                 .as_str(),
                 false,
                 None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -77,6 +73,8 @@ where
                 .as_str(),
                 false,
                 None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -103,6 +101,8 @@ where
                 .as_str(),
                 true,
                 None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 

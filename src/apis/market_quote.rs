@@ -2,7 +2,8 @@ use {
     crate::{
         client::ApiClient,
         constants::{
-            MARKET_QUOTE_FULL_ENDPOINT, MARKET_QUOTE_LTP_ENDPOINT, MARKET_QUOTE_OHLC_ENDPOINT,
+            APIVersion, BaseUrlType, MARKET_QUOTE_FULL_ENDPOINT, MARKET_QUOTE_LTP_ENDPOINT,
+            MARKET_QUOTE_OHLC_ENDPOINT,
         },
         models::{
             error_response::ErrorResponse,
@@ -13,9 +14,7 @@ use {
                 ohlc_quotes_request::OHLCQuotesRequest, ohlc_quotes_response::OHLCQuoteResponse,
             },
             success_response::SuccessResponse,
-            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
@@ -23,11 +22,7 @@ use {
     std::collections::HashMap,
 };
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn get_full_market_quotes(
         &self,
         full_market_quotes_params: FullMarketQuotesRequest,
@@ -42,6 +37,8 @@ where
                 MARKET_QUOTE_FULL_ENDPOINT,
                 true,
                 Some(&full_market_quotes_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -68,6 +65,8 @@ where
                 MARKET_QUOTE_OHLC_ENDPOINT,
                 true,
                 Some(&ohlc_quotes_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -94,6 +93,8 @@ where
                 MARKET_QUOTE_LTP_ENDPOINT,
                 true,
                 Some(&ltp_quotes_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 

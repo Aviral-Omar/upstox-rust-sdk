@@ -2,7 +2,7 @@ use {
     crate::{
         client::ApiClient,
         constants::{
-            TRADE_PNL_REPORT_ENDPOINT, TRADE_PNL_REPORT_METADATA_ENDPOINT,
+            APIVersion, BaseUrlType, TRADE_PNL_REPORT_ENDPOINT, TRADE_PNL_REPORT_METADATA_ENDPOINT,
             TRADE_PNL_TRADES_CHARGES_ENDPOINT,
         },
         models::{
@@ -16,20 +16,14 @@ use {
                 trades_charges_request::TradesChargesRequest,
                 trades_charges_response::TradesChargesResponse,
             },
-            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
 };
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn get_pnl_report_metadata(
         &self,
         pnl_report_metadata_params: PnLReportMetaDataRequest,
@@ -42,6 +36,8 @@ where
                 TRADE_PNL_REPORT_METADATA_ENDPOINT,
                 true,
                 Some(&pnl_report_metadata_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -66,6 +62,8 @@ where
                 TRADE_PNL_REPORT_ENDPOINT,
                 true,
                 Some(&pnl_report_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -90,6 +88,8 @@ where
                 TRADE_PNL_TRADES_CHARGES_ENDPOINT,
                 true,
                 Some(&trades_charges_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 

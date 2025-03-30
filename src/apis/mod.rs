@@ -1,7 +1,9 @@
 pub mod charges;
+pub mod gtt_orders;
 pub mod historical_data;
 pub mod instruments;
 pub mod login;
+pub mod margins;
 pub mod market_information;
 pub mod market_quote;
 pub mod option_chain;

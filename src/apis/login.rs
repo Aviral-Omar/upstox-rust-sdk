@@ -2,11 +2,11 @@ use {
     crate::{
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider},
         constants::{
-            EMAIL_ID_ENV, GOOGLE_AUTHORIZATION_CODE_ENV, GOOGLE_CLIENT_ID_ENV,
-            GOOGLE_CLIENT_SECRET_ENV, GOOGLE_IMAP_URL, GOOGLE_OAUTH2_ACCESS_TOKEN_URL,
-            GOOGLE_OAUTH2_AUTH_URL, GOOGLE_REFRESH_TOKEN_FILENAME, LOGIN_AUTHORIZE_ENDPOINT,
-            LOGIN_GET_TOKEN_ENDPOINT, LOGIN_PIN_ENV, LOGOUT_ENDPOINT, MOBILE_NUMBER_ENV,
-            REDIRECT_PORT_ENV, REST_BASE_URL, UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV,
+            APIVersion, BaseUrlType, EMAIL_ID_ENV, GOOGLE_AUTHORIZATION_CODE_ENV,
+            GOOGLE_CLIENT_ID_ENV, GOOGLE_CLIENT_SECRET_ENV, GOOGLE_IMAP_URL,
+            GOOGLE_OAUTH2_ACCESS_TOKEN_URL, GOOGLE_OAUTH2_AUTH_URL, GOOGLE_REFRESH_TOKEN_FILENAME,
+            LOGIN_AUTHORIZE_ENDPOINT, LOGIN_GET_TOKEN_ENDPOINT, LOGIN_PIN_ENV, LOGOUT_ENDPOINT,
+            MOBILE_NUMBER_ENV, REDIRECT_PORT_ENV, UPLINK_API_KEY_ENV, UPLINK_API_SECRET_ENV,
             UPSTOX_ACCESS_TOKEN_FILENAME, WEBDRIVER_SOCKET_ENV,
         },
         models::{
@@ -24,10 +24,8 @@ use {
                 token_response::TokenResponse,
             },
             success_response::SuccessResponse,
-            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
-        utils::{read_value_from_file, write_value_to_file, ToKeyValueTuples},
+        utils::{create_url, read_value_from_file, write_value_to_file, ToKeyValueTuples},
     },
     async_imap::{
         self,
@@ -71,11 +69,7 @@ impl Authenticator for &OAuth2 {
     }
 }
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub(crate) async fn login(&mut self, login_config: &LoginConfig) -> Result<(), String> {
         if let Ok(access_token) = read_value_from_file(UPSTOX_ACCESS_TOKEN_FILENAME) {
             self.token = Some(access_token);
@@ -117,7 +111,12 @@ where
             response_type: ResponseType::Code,
         };
         let full_url: Url = Url::parse_with_params(
-            format!("{}{}", REST_BASE_URL, LOGIN_AUTHORIZE_ENDPOINT).as_str(),
+            create_url(
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
+                LOGIN_AUTHORIZE_ENDPOINT,
+            )
+            .as_str(),
             dialog_request_params.to_key_value_tuples_vec(),
         )
         .unwrap();
@@ -232,6 +231,8 @@ where
                 false,
                 None,
                 Some(&token_request_form.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await
             .unwrap();
@@ -243,7 +244,17 @@ where
     }
 
     pub async fn logout(&self) -> Result<SuccessResponse<bool>, String> {
-        let res: reqwest::Response = self.delete(LOGOUT_ENDPOINT, true, None).await.unwrap();
+        let res: reqwest::Response = self
+            .delete::<()>(
+                LOGOUT_ENDPOINT,
+                true,
+                None,
+                None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
+            )
+            .await
+            .unwrap();
         match res.status().as_u16() {
             200 => Ok(res.json::<SuccessResponse<bool>>().await.unwrap()),
             _ => Err("Unexpected error while logging out".to_string()),

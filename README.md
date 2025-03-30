@@ -8,6 +8,9 @@ Upstox API is a set of rest APIs that provide data required to build a complete 
 
 - API version: v2
 
+## Requirements
+- Install `libssl-dev` on Linux
+
 ## Environment Variables
 
 These environment variables are used optionally in the SDK depending on the features to be used.

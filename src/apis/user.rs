@@ -1,6 +1,8 @@
 use crate::{
     client::ApiClient,
-    constants::{USER_GET_FUND_AND_MARGIN_ENDPOINT, USER_GET_PROFILE_ENDPOINT},
+    constants::{
+        APIVersion, BaseUrlType, USER_GET_FUND_AND_MARGIN_ENDPOINT, USER_GET_PROFILE_ENDPOINT,
+    },
     models::{
         error_response::ErrorResponse,
         success_response::SuccessResponse,
@@ -9,22 +11,24 @@ use crate::{
             fund_and_margin_response::FundAndMarginResponse,
             profile_response::ProfileResponse,
         },
-        ws::portfolio_feed_response::PortfolioFeedResponse,
     },
-    protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
     rate_limiter::RateLimitExceeded,
     utils::ToKeyValueTuples,
 };
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn get_profile(
         &self,
     ) -> Result<Result<SuccessResponse<ProfileResponse>, ErrorResponse>, RateLimitExceeded> {
-        let res: reqwest::Response = self.get(USER_GET_PROFILE_ENDPOINT, true, None).await?;
+        let res: reqwest::Response = self
+            .get(
+                USER_GET_PROFILE_ENDPOINT,
+                true,
+                None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
+            )
+            .await?;
         Ok(match res.status().as_u16() {
             200 => Ok(res
                 .json::<SuccessResponse<ProfileResponse>>()
@@ -46,6 +50,8 @@ where
                 USER_GET_FUND_AND_MARGIN_ENDPOINT,
                 true,
                 Some(&fund_and_margin_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 

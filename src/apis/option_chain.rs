@@ -1,7 +1,7 @@
 use {
     crate::{
         client::ApiClient,
-        constants::{OPTION_CHAIN_ENDPOINT, OPTION_CONTRACTS_ENDPOINT},
+        constants::{APIVersion, BaseUrlType, OPTION_CHAIN_ENDPOINT, OPTION_CONTRACTS_ENDPOINT},
         models::{
             error_response::ErrorResponse,
             option_chain::{
@@ -11,20 +11,14 @@ use {
                 put_call_option_chain_response::OptionChainResponse,
             },
             success_response::SuccessResponse,
-            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
 };
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn get_option_contracts(
         &self,
         option_contracts_params: OptionContractsRequest,
@@ -39,6 +33,8 @@ where
                 OPTION_CONTRACTS_ENDPOINT,
                 true,
                 Some(&option_contracts_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -63,6 +59,8 @@ where
                 OPTION_CHAIN_ENDPOINT,
                 true,
                 Some(&option_chains_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 

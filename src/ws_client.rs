@@ -1,18 +1,27 @@
 use {
     crate::{
         client::ApiClient,
-        constants::{WS_MARKET_DATA_FEED_AUTHORIZE_ENDPOINT, WS_PORTFOLIO_FEED_AUTHORIZE_ENDPOINT},
+        constants::{
+            APIVersion, BaseUrlType, WS_MARKET_DATA_FEED_AUTHORIZE_ENDPOINT,
+            WS_PORTFOLIO_FEED_AUTHORIZE_ENDPOINT,
+        },
         models::{
             error_response::ErrorResponse,
             success_response::SuccessResponse,
             ws::{
                 market_data_feed_message::{MarketDataFeedMessage, MessageData, MethodType},
+                market_data_feed_v3_message::{
+                    MarketDataFeedV3Message, MessageDataV3, MethodTypeV3,
+                },
                 portfolio_feed_request::PortfolioUpdateType,
                 portfolio_feed_response::PortfolioFeedResponse,
                 AuthorizeFeedResponse,
             },
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+        protos::{
+            market_data_feed::FeedResponse as MarketDataFeedResponse,
+            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
+        },
         rate_limiter::RateLimitExceeded,
     },
     async_trait::async_trait,
@@ -37,6 +46,15 @@ where
 pub struct MarketDataFeedClient<F>
 where
     F: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+{
+    pub handle: EzClient<Self>,
+    callback: Option<F>,
+}
+
+#[derive(Debug)]
+pub struct MarketDataFeedV3Client<F>
+where
+    F: FnMut(MarketDataFeedV3Response) + Send + Sync + 'static,
 {
     pub handle: EzClient<Self>,
     callback: Option<F>,
@@ -108,16 +126,54 @@ where
     }
 }
 
-impl<F, G> ApiClient<F, G>
+#[async_trait]
+impl<F> ClientExt for MarketDataFeedV3Client<F>
 where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
+    F: FnMut(MarketDataFeedV3Response) + Send + Sync + 'static,
 {
+    type Call = MarketDataV3Call;
+
+    async fn on_text(&mut self, _: String) -> Result<(), EzError> {
+        Ok(())
+    }
+
+    async fn on_binary(&mut self, binary_data: Vec<u8>) -> Result<(), EzError> {
+        if let Some(callback) = &mut self.callback {
+            let data: MarketDataFeedV3Response =
+                MarketDataFeedV3Response::parse_from_bytes(&binary_data)?;
+            callback(data);
+        }
+        Ok(())
+    }
+
+    async fn on_call(&mut self, call: Self::Call) -> Result<(), EzError> {
+        let market_data_feed_message: MarketDataFeedV3Message = MarketDataFeedV3Message {
+            guid: "someguid".to_string(),
+            method: match call {
+                MarketDataV3Call::SubscribeInstrument(_) => MethodTypeV3::Sub,
+                MarketDataV3Call::ChangeMode(_) => MethodTypeV3::ChangeMode,
+                MarketDataV3Call::UnsubscribeInstrument(_) => MethodTypeV3::Unsub,
+            },
+            data: match call {
+                MarketDataV3Call::SubscribeInstrument(data) => data,
+                MarketDataV3Call::ChangeMode(data) => data,
+                MarketDataV3Call::UnsubscribeInstrument(data) => data,
+            },
+        };
+
+        let message_text: String = serde_json::to_string(&market_data_feed_message).unwrap();
+        let message_binary: &[u8] = message_text.as_bytes();
+        self.handle.binary(message_binary)?;
+        Ok(())
+    }
+}
+
+impl ApiClient {
     // Default update type is order only
     pub async fn connect_portfolio_feed(
         &mut self,
         update_types: Option<HashSet<PortfolioUpdateType>>,
-        callback: Option<F>,
+        callback: Option<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
     ) -> Result<JoinHandle<()>, String> {
         let authorized_url: String = self
             .get_authorized_portfolio_feed_endpoint(update_types)
@@ -140,7 +196,7 @@ where
 
     pub async fn connect_market_data_feed(
         &mut self,
-        callback: Option<G>,
+        callback: Option<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
     ) -> Result<JoinHandle<()>, String> {
         let authorized_url: String = self
             .get_authorized_market_data_feed_endpoint()
@@ -161,12 +217,45 @@ where
         Ok(feed_future)
     }
 
+    pub async fn connect_market_data_feed_v3(
+        &mut self,
+        callback: Option<Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>>,
+    ) -> Result<JoinHandle<()>, String> {
+        let authorized_url: String = self
+            .get_authorized_market_data_feed_v3_endpoint()
+            .await
+            .unwrap()
+            .map_err(|_| "Failed to fetch Market Data Feed V3 WS URL".to_string())?
+            .data
+            .authorized_redirect_uri;
+
+        let config: ClientConfig = ClientConfig::new(Url::parse(&authorized_url).unwrap());
+        let (handle, future) =
+            ezsockets::connect(|handle| MarketDataFeedV3Client { handle, callback }, config).await;
+        self.market_data_feed_v3_client = Some(handle);
+
+        let feed_future: JoinHandle<()> = tokio::spawn(async move {
+            future.await.unwrap();
+        });
+        Ok(feed_future)
+    }
+
     pub async fn send_market_data_feed_message(
         &self,
         market_data_feed_message: MarketDataCall,
     ) -> Result<(), EzError> {
         if let Some(client) = &self.market_data_feed_client {
             client.call(market_data_feed_message)?;
+        }
+        Ok(())
+    }
+
+    pub async fn send_market_data_feed_v3_message(
+        &self,
+        market_data_feed_v3_message: MarketDataV3Call,
+    ) -> Result<(), EzError> {
+        if let Some(client) = &self.market_data_feed_v3_client {
+            client.call(market_data_feed_v3_message)?;
         }
         Ok(())
     }
@@ -198,6 +287,8 @@ where
                 WS_PORTFOLIO_FEED_AUTHORIZE_ENDPOINT,
                 true,
                 Some(&vec![("update_types".to_string(), update_types)]),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 
@@ -215,7 +306,36 @@ where
     ) -> Result<Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse>, RateLimitExceeded>
     {
         let res: reqwest::Response = self
-            .get(WS_MARKET_DATA_FEED_AUTHORIZE_ENDPOINT, true, None)
+            .get(
+                WS_MARKET_DATA_FEED_AUTHORIZE_ENDPOINT,
+                true,
+                None,
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
+            )
+            .await?;
+
+        Ok(match res.status().as_u16() {
+            200 => Ok(res
+                .json::<SuccessResponse<AuthorizeFeedResponse>>()
+                .await
+                .unwrap()),
+            _ => Err(res.json::<ErrorResponse>().await.unwrap()),
+        })
+    }
+
+    pub async fn get_authorized_market_data_feed_v3_endpoint(
+        &self,
+    ) -> Result<Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse>, RateLimitExceeded>
+    {
+        let res: reqwest::Response = self
+            .get(
+                WS_MARKET_DATA_FEED_AUTHORIZE_ENDPOINT,
+                true,
+                None,
+                BaseUrlType::REGULAR,
+                APIVersion::V3,
+            )
             .await?;
 
         Ok(match res.status().as_u16() {
@@ -233,5 +353,13 @@ pub enum MarketDataCall {
     SubscribeInstrument(MessageData),
     ChangeMode(MessageData),
     UnsubscribeInstrument(MessageData),
+    // Add other calls as needed
+}
+
+#[derive(Debug)]
+pub enum MarketDataV3Call {
+    SubscribeInstrument(MessageDataV3),
+    ChangeMode(MessageDataV3),
+    UnsubscribeInstrument(MessageDataV3),
     // Add other calls as needed
 }

@@ -1,7 +1,7 @@
 use {
     crate::{
         client::ApiClient,
-        constants::CHARGES_BROKERAGE_DETAILS_ENDPOINT,
+        constants::{APIVersion, BaseUrlType, CHARGES_BROKERAGE_DETAILS_ENDPOINT},
         models::{
             charges::{
                 brokerage_details_request::BrokerageDetailsRequest,
@@ -9,20 +9,14 @@ use {
             },
             error_response::ErrorResponse,
             success_response::SuccessResponse,
-            ws::portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
         rate_limiter::RateLimitExceeded,
         utils::ToKeyValueTuples,
     },
     serde_valid::Validate,
 };
 
-impl<F, G> ApiClient<F, G>
-where
-    F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-    G: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
+impl ApiClient {
     pub async fn get_brokerage_details(
         &self,
         brokerage_details_params: BrokerageDetailsRequest,
@@ -34,6 +28,8 @@ where
                 CHARGES_BROKERAGE_DETAILS_ENDPOINT,
                 true,
                 Some(&brokerage_details_params.to_key_value_tuples_vec()),
+                BaseUrlType::REGULAR,
+                APIVersion::V2,
             )
             .await?;
 

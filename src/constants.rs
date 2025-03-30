@@ -1,4 +1,13 @@
-pub(super) const REST_BASE_URL: &str = "https://api-v2.upstox.com";
+pub(super) enum BaseUrlType {
+    REGULAR,
+    HFT,
+    SANDBOX,
+}
+
+pub(super) enum APIVersion {
+    V2,
+    V3,
+}
 
 pub(super) const LOGIN_AUTHORIZE_ENDPOINT: &str = "/login/authorization/dialog";
 pub(super) const LOGIN_GET_TOKEN_ENDPOINT: &str = "/login/authorization/token";
@@ -11,16 +20,25 @@ pub(super) const USER_GET_FUND_AND_MARGIN_ENDPOINT: &str = "/user/get-funds-and-
 pub(super) const USER_GET_PROFILE_ENDPOINT: &str = "/user/profile";
 
 pub(super) const CHARGES_BROKERAGE_DETAILS_ENDPOINT: &str = "/charges/brokerage";
+pub(super) const MARGINS_MARGIN_DETAILS_ENDPOINT: &str = "/charges/margin";
 
 pub(super) const ORDERS_PLACE_ORDER_ENDPOINT: &str = "/order/place";
+pub(super) const ORDERS_PLACE_MULTI_ORDER_ENDPOINT: &str = "/order/multi/place";
 pub(super) const ORDERS_MODIFY_ORDER_ENDPOINT: &str = "/order/modify";
 pub(super) const ORDERS_CANCEL_ORDER_ENDPOINT: &str = "/order/cancel";
+pub(super) const ORDERS_CANCEL_MULTI_ORDER_ENDPOINT: &str = "/order/multi/cancel";
+pub(super) const ORDERS_EXIT_ALL_POSITIONS_ENDPOINT: &str = "/order/positions/exit";
 pub(super) const ORDERS_ORDER_DETAILS_ENDPOINT: &str = "/order/details";
 pub(super) const ORDERS_ORDER_HISTORY_ENDPOINT: &str = "/order/history";
 pub(super) const ORDERS_ORDER_BOOK_ENDPOINT: &str = "/order/retrieve-all";
 pub(super) const ORDERS_TRADES_ENDPOINT: &str = "/order/get-trades-for-day";
 pub(super) const ORDERS_ORDER_TRADES_ENDPOINT: &str = "/order/trades";
 pub(super) const ORDERS_TRADE_HISTORY_ENDPOINT: &str = "/charges/historical-trades";
+
+pub(super) const GTT_ORDERS_PLACE_GTT_ORDER_ENDPOINT: &str = "order/gtt/place";
+pub(super) const GTT_ORDERS_MODIFY_GTT_ORDER_ENDPOINT: &str = "order/gtt/modify";
+pub(super) const GTT_ORDERS_CANCEL_GTT_ORDER_ENDPOINT: &str = "order/gtt/cancel";
+pub(super) const GTT_ORDERS_GTT_ORDER_DETAILS_ENDPOINT: &str = "order/gtt";
 
 pub(super) const TRADE_PNL_REPORT_METADATA_ENDPOINT: &str = "/trade/profit-loss/metadata";
 pub(super) const TRADE_PNL_REPORT_ENDPOINT: &str = "/trade/profit-loss/data";

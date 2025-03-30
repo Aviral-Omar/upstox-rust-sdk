@@ -5,6 +5,9 @@ fn main() {
         .pure()
         .cargo_out_dir("protos")
         .include("src")
-        .input("src/protos/market_data_feed.proto")
+        .inputs(vec![
+            "src/protos/market_data_feed.proto",
+            "src/protos/market_data_feed_v3.proto",
+        ])
         .run_from_script();
 }

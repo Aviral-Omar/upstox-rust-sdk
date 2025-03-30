@@ -1,8 +1,10 @@
 pub mod charges;
 pub mod error_response;
+pub mod gtt_orders;
 pub mod historical_data;
 pub mod instruments;
 pub mod login;
+pub mod margins;
 pub mod market_information;
 pub mod market_quote;
 pub mod option_chain;
@@ -21,6 +23,14 @@ use {
         str::FromStr,
     },
 };
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ResponseSummary {
+    pub total: u32,
+    pub payload_error: Option<u32>,
+    pub success: u32,
+    pub error: u32,
+}
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "UPPERCASE")]

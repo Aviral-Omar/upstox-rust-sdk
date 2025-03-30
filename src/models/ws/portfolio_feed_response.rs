@@ -10,6 +10,9 @@ use {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub enum PortfolioFeedResponse {
+    GTTOrderData {
+        update_type: PortfolioUpdateType,
+    },
     HoldingData {
         update_type: PortfolioUpdateType,
         isin: String,

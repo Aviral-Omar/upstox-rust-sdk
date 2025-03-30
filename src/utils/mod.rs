@@ -1,12 +1,14 @@
 pub mod serde_spaced_lowercase;
 
-use std::{
-    fs::File,
-    io::{Read, Write},
+use {
+    crate::constants::{APIVersion, BaseUrlType},
+    serde::Serialize,
+    serde_json::Value,
+    std::{
+        fs::File,
+        io::{Read, Write},
+    },
 };
-
-use serde::Serialize;
-use serde_json::Value;
 
 pub trait ToKeyValueTuples: Send {
     fn to_key_value_tuples_vec(&self) -> Vec<(String, String)>;
@@ -42,4 +44,20 @@ pub fn read_value_from_file(filename: &str) -> std::io::Result<String> {
     let mut value: String = String::new();
     file.read_to_string(&mut value)?;
     Ok(value.trim().to_string())
+}
+
+pub fn create_url(base_url_type: BaseUrlType, api_version: APIVersion, endpoint: &str) -> String {
+    format!(
+        "https://api{}.upstox.com/{}{}",
+        match base_url_type {
+            BaseUrlType::REGULAR => "",
+            BaseUrlType::HFT => "-hft",
+            BaseUrlType::SANDBOX => "-sandbox",
+        },
+        match api_version {
+            APIVersion::V2 => "v2",
+            APIVersion::V3 => "v3",
+        },
+        endpoint
+    )
 }
