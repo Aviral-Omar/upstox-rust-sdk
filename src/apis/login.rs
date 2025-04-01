@@ -48,7 +48,7 @@ use {
         sync::{Mutex, MutexGuard},
         time::{sleep, Duration},
     },
-    tracing::info,
+    tracing::{debug, info, warn},
     url_open::UrlOpen,
     urlencoding::decode,
 };
@@ -157,28 +157,34 @@ impl ApiClient {
             let automate_fetching_otp: bool = automate_login_config.automate_fetching_otp;
 
             if automate_fetching_otp {
-                let otp: String = self
+                match self
                     .get_otp(
                         otp_sent_timestamp,
                         automate_login_config.mail_provider.clone().unwrap(),
                     )
-                    .await?;
-
-                let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
-                    fantoccini_client.lock().await;
-                let client: &mut FantocciniClient =
-                    client.as_mut().expect("Client is already closed");
-                let otp_field: Element = client
-                    .wait()
-                    .every(Duration::from_millis(100))
-                    .for_element(Locator::Id("otpNum"))
                     .await
-                    .unwrap();
-                otp_field.send_keys(&otp).await.unwrap();
+                {
+                    Ok(otp) => {
+                        let mut client: tokio::sync::MutexGuard<Option<FantocciniClient>> =
+                            fantoccini_client.lock().await;
+                        let client: &mut FantocciniClient =
+                            client.as_mut().expect("Client is already closed");
+                        let otp_field: Element = client
+                            .wait()
+                            .every(Duration::from_millis(100))
+                            .for_element(Locator::Id("otpNum"))
+                            .await
+                            .unwrap();
+                        otp_field.send_keys(&otp).await.unwrap();
 
-                let continue_button: Element =
-                    client.find(Locator::Id("continueBtn")).await.unwrap();
-                continue_button.click().await.unwrap();
+                        let continue_button: Element =
+                            client.find(Locator::Id("continueBtn")).await.unwrap();
+                        continue_button.click().await.unwrap();
+                    }
+                    Err(err) => {
+                        warn!("Error while fetching OTP: {}", err);
+                    }
+                }
             }
 
             let auth_code: String = {
@@ -199,9 +205,32 @@ impl ApiClient {
                     client.find(Locator::Id("pinContinueBtn")).await.unwrap();
 
                 let code_future = self.await_and_extract_code();
-                pin_continue_button.click().await.unwrap();
+                let click_result = pin_continue_button.click().await;
 
-                code_future.await
+                match click_result {
+                    Ok(_) => {
+                        // Wait for the server to capture the code
+                        code_future.await
+                    }
+                    Err(err) => {
+                        // Handle the error and extract the code from the error message
+                        if let fantoccini::error::CmdError::Standard(webdriver_error) = err {
+                            let message = webdriver_error.message.into_owned();
+                            if message.contains("Reached error page") && message.contains("code%3D")
+                            {
+                                // Extract the code from the error message
+                                if let Some(code_start) = message.find("code%3D") {
+                                    let code_start = code_start + 7; // Skip "code="
+                                    if let Some(code_end) = message[code_start..].find('&') {
+                                        let code = &message[code_start..code_start + code_end];
+                                        return Ok(code.to_string());
+                                    }
+                                }
+                            }
+                        }
+                        panic!("Failed to click continue button and extract code")
+                    }
+                }
             };
 
             self.close_fantoccini_client(fantoccini_client).await;
@@ -310,11 +339,20 @@ impl ApiClient {
             client.authenticate("XOAUTH2", &oauth2).await.unwrap();
 
         info!("OTP Sent: {}", otp_sent_time);
+
+        let mut retries: u32 = 0;
+        let max_retries: u32 = 5;
         loop {
+            if retries >= max_retries {
+                return Err("Failed to fetch OTP automatically after multiple attempts".to_string());
+            }
+            retries += 1;
+
             let inbox: Mailbox = imap_session.select("INBOX").await.unwrap();
             let msg_count: u32 = inbox.exists;
 
-            for seq_no in ((msg_count - 2)..=msg_count).rev() {
+            let start_seq_no = if msg_count > 2 { msg_count - 2 } else { 1 };
+            for seq_no in (start_seq_no..=msg_count).rev() {
                 let msg_headers: Option<Fetch> = self
                     .get_message_data(
                         &mut imap_session,
@@ -333,19 +371,25 @@ impl ApiClient {
                 )
                 .unwrap()
                 .timestamp();
-                info!("Read mail with time: {}", msg_timestamp);
+                debug!("Read mail with time: {}", msg_timestamp);
                 if msg_timestamp < otp_sent_time {
                     break;
                 }
 
-                let from_match: bool = self.check_header(
-                    headers,
-                    "From",
-                    "Upstox Alert <donotreply@transactions.upstox.com>",
-                );
+                let from_match: bool =
+                    self.check_header(
+                        headers,
+                        "From",
+                        "Upstox Alert <donotreply@transactions.upstox.com>",
+                    ) || self.check_header(
+                        headers,
+                        "From",
+                        "Upstox <donotreply@transactions.upstox.com>",
+                    ) || self.check_header(headers, "From", "Upstox <noreply@upstox.com>");
                 let subject_match: bool = self.check_header(headers, "Subject", "OTP to login");
 
                 if from_match && subject_match {
+                    debug!("Found OTP email at time: {}", msg_timestamp);
                     let msg_text: Fetch = self
                         .get_message_data(&mut imap_session, seq_no.to_string(), "BODY[TEXT]")
                         .await
@@ -364,7 +408,10 @@ impl ApiClient {
                         .select(&span_selector)
                         .into_iter()
                         .find(|element| match element.text().next() {
-                            Some(val) => re.find(val).is_some(),
+                            Some(val) => {
+                                debug!("Found OTP element: {}", val);
+                                re.find(val).is_some()
+                            }
                             None => false,
                         })
                         .unwrap();
