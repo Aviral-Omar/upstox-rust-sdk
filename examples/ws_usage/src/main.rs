@@ -7,12 +7,15 @@ use {
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
         constants::UPLINK_API_KEY_ENV,
         models::ws::{
-            market_data_feed_message::{MessageData, ModeType},
+            market_data_feed_v3_message::{MessageDataV3, ModeTypeV3},
             portfolio_feed_request::PortfolioUpdateType,
             portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
-        ws_client::MarketDataCall,
+        protos::{
+            market_data_feed::FeedResponse as MarketDataFeedResponse,
+            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
+        },
+        ws_client::MarketDataV3Call,
     },
 };
 
@@ -24,7 +27,7 @@ async fn main() {
     let portfolio_feed_handler = |data: PortfolioFeedResponse| {
         println!("{:?}", data);
     };
-    let market_data_feed_handler = |data: MarketDataFeedResponse| {
+    let market_data_feed_v3_handler = |data: MarketDataFeedV3Response| {
         println!("{:?}", data);
     };
 
@@ -48,7 +51,8 @@ async fn main() {
         // Configuration to connect and handle websocket data.
         WSConnectConfig {
             connect_portfolio_stream: true,
-            connect_market_data_stream: true,
+            connect_market_data_stream: false,
+            connect_market_data_stream_v3: true,
             // Select which portfolio data to fetch
             portfolio_stream_update_types: Some(HashSet::from([
                 PortfolioUpdateType::Order,
@@ -56,9 +60,10 @@ async fn main() {
                 PortfolioUpdateType::Holding,
             ])),
             // Handle portfolio data feed
-            portfolio_feed_callback: Some(portfolio_feed_handler),
+            portfolio_feed_callback: Some(Box::new(portfolio_feed_handler)),
+            market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
             // Handle market data feed
-            market_data_feed_callback: Some(market_data_feed_handler),
+            market_data_feed_v3_callback: Some(Box::new(market_data_feed_v3_handler)),
         },
     )
     .await
@@ -66,8 +71,8 @@ async fn main() {
 
     let api_client = api_client.lock().await;
     api_client
-        .send_market_data_feed_message(MarketDataCall::SubscribeInstrument(MessageData {
-            mode: ModeType::Full,
+        .send_market_data_feed_v3_message(MarketDataV3Call::SubscribeInstrument(MessageDataV3 {
+            mode: ModeTypeV3::Full,
             instrument_keys: vec![
                 "NSE_INDEX|NIFTY LARGEMID250".to_string(),
                 "NSE_INDEX|Nifty Auto".to_string(),
