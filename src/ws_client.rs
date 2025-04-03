@@ -25,7 +25,7 @@ use {
         rate_limiter::RateLimitExceeded,
     },
     async_trait::async_trait,
-    ezsockets::{Client as EzClient, ClientConfig, ClientExt, Error as EzError},
+    ezsockets::{Bytes, Client as EzClient, ClientConfig, ClientExt, Error as EzError, Utf8Bytes},
     protobuf::Message,
     reqwest::Url,
     serde_json,
@@ -67,7 +67,7 @@ where
 {
     type Call = ();
 
-    async fn on_text(&mut self, text: String) -> Result<(), EzError> {
+    async fn on_text(&mut self, text: Utf8Bytes) -> Result<(), EzError> {
         if let Some(callback) = &mut self.callback {
             let data: PortfolioFeedResponse = serde_json::from_str::<PortfolioFeedResponse>(&text)?;
             callback(data);
@@ -75,7 +75,7 @@ where
         Ok(())
     }
 
-    async fn on_binary(&mut self, _: Vec<u8>) -> Result<(), EzError> {
+    async fn on_binary(&mut self, _: Bytes) -> Result<(), EzError> {
         Ok(())
     }
 
@@ -91,11 +91,11 @@ where
 {
     type Call = MarketDataCall;
 
-    async fn on_text(&mut self, _: String) -> Result<(), EzError> {
+    async fn on_text(&mut self, _: Utf8Bytes) -> Result<(), EzError> {
         Ok(())
     }
 
-    async fn on_binary(&mut self, binary_data: Vec<u8>) -> Result<(), EzError> {
+    async fn on_binary(&mut self, binary_data: Bytes) -> Result<(), EzError> {
         if let Some(callback) = &mut self.callback {
             let data: MarketDataFeedResponse =
                 MarketDataFeedResponse::parse_from_bytes(&binary_data)?;
@@ -120,7 +120,7 @@ where
         };
 
         let message_text: String = serde_json::to_string(&market_data_feed_message).unwrap();
-        let message_binary: &[u8] = message_text.as_bytes();
+        let message_binary: Vec<u8> = message_text.into_bytes();
         self.handle.binary(message_binary)?;
         Ok(())
     }
@@ -133,11 +133,11 @@ where
 {
     type Call = MarketDataV3Call;
 
-    async fn on_text(&mut self, _: String) -> Result<(), EzError> {
+    async fn on_text(&mut self, _: Utf8Bytes) -> Result<(), EzError> {
         Ok(())
     }
 
-    async fn on_binary(&mut self, binary_data: Vec<u8>) -> Result<(), EzError> {
+    async fn on_binary(&mut self, binary_data: Bytes) -> Result<(), EzError> {
         if let Some(callback) = &mut self.callback {
             let data: MarketDataFeedV3Response =
                 MarketDataFeedV3Response::parse_from_bytes(&binary_data)?;
@@ -162,7 +162,7 @@ where
         };
 
         let message_text: String = serde_json::to_string(&market_data_feed_message).unwrap();
-        let message_binary: &[u8] = message_text.as_bytes();
+        let message_binary: Vec<u8> = message_text.into_bytes();
         self.handle.binary(message_binary)?;
         Ok(())
     }
