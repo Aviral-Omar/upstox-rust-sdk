@@ -13,31 +13,31 @@
 //!         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
 //!         constants::UPLINK_API_KEY_ENV,
 //!         models::ws::{
-//!             market_data_feed_message::{MessageData, ModeType},
+//!             market_data_feed_v3_message::{MessageDataV3, ModeTypeV3},
 //!             portfolio_feed_request::PortfolioUpdateType,
 //!             portfolio_feed_response::PortfolioFeedResponse,
 //!         },
-//!         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
-//!         ws_client::MarketDataCall,
+//!         protos::market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
+//!         ws_client::MarketDataV3Call,
 //!     },
 //! };
-//!
+
 //! #[tokio::main]
 //! async fn main() {
 //!     tracing_subscriber::fmt::init();
 //!     let _ = dotenv();
-//!
+
 //!     let portfolio_feed_handler = |data: PortfolioFeedResponse| {
 //!         println!("{:?}", data);
 //!     };
-//!     let market_data_feed_handler = |data: MarketDataFeedResponse| {
+//!     let market_data_feed_v3_handler = |data: MarketDataFeedV3Response| {
 //!         println!("{:?}", data);
 //!     };
-//!
+
 //!     let api_key: String = env::var(UPLINK_API_KEY_ENV).unwrap();
 //!     let (fetch_instruments, schedule_refresh_instruments) = (false, false);
-//!
-//     // ApiClient with websockets connected and handler specified
+
+//!     // ApiClient with websockets connected and handler specified
 //!     let (api_client, tasks_vec) = ApiClient::new(
 //!         &api_key,
 //!         LoginConfig {
@@ -54,7 +54,7 @@
 //!         // Configuration to connect and handle websocket data.
 //!         WSConnectConfig {
 //!             connect_portfolio_stream: true,
-//!             connect_market_data_stream: true,
+//!             connect_market_data_stream_v3: true,
 //!             // Select which portfolio data to fetch
 //!             portfolio_stream_update_types: Some(HashSet::from([
 //!                 PortfolioUpdateType::Order,
@@ -62,34 +62,34 @@
 //!                 PortfolioUpdateType::Holding,
 //!             ])),
 //!             // Handle portfolio data feed
-//!             portfolio_feed_callback: Some(portfolio_feed_handler),
+//!             portfolio_feed_callback: Some(Box::new(portfolio_feed_handler)),
 //!             // Handle market data feed
-//!             market_data_feed_callback: Some(market_data_feed_handler),
+//!             market_data_feed_v3_callback: Some(Box::new(market_data_feed_v3_handler)),
 //!         },
 //!     )
 //!     .await
 //!     .unwrap();
-//!
+
 //!     let api_client = api_client.lock().await;
 //!     api_client
-//!         .send_market_data_feed_message(MarketDataCall::SubscribeInstrument(MessageData {
-//!             mode: ModeType::Full,
+//!         .send_market_data_feed_v3_message(MarketDataV3Call::SubscribeInstrument(MessageDataV3 {
+//!             mode: ModeTypeV3::Full,
 //!             instrument_keys: vec![
 //!                 "NSE_INDEX|NIFTY LARGEMID250".to_string(),
 //!                 "NSE_INDEX|Nifty Auto".to_string(),
 //!                 "NSE_INDEX|Nifty Midcap 50".to_string(),
-//!                 "BSE_EQ|INE053F08288".to_string(),
 //!             ],
 //!         }))
 //!         .await
 //!         .unwrap();
-//!
+
 //!     // This ensures that app continues running until the websockets die if connected or until SIGINT occurs
 //!     tokio::select! {
 //!         _ = join_all(tasks_vec) => {}
 //!         _ = signal::ctrl_c() => {}
 //!     };
 //! }
+
 //!
 //! ```
 //!
@@ -100,20 +100,21 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
+//!     tracing_subscriber::fmt::init();
 //!     let _ = dotenv();
-//!
+
 //!     let api_key: String = env::var(UPLINK_API_KEY_ENV).unwrap();
 //!     let (fetch_instruments, schedule_refresh_instruments) = (false, false);
-//!
+
 //!     // ApiClient which logs in automatically and schedules relogin daily when token expires
-//!     let (api_client, tasks_vec) = ApiClient::new(
+//!     let (_api_client, tasks_vec) = ApiClient::new(
 //!         &api_key,
 //!         LoginConfig {
 //!             authorize: true,
 //!             automate_login_config: Some(AutomateLoginConfig {
 //!                 // geckodriver or chromedriver binary must be running locally with port specified in env to use automatic login or schedule login.
 //!                 // ./geckodriver --binary "~/.local/share/flatpak/exports/bin/org.mozilla.firefox" --profile-root "~/.var/app/org.mozilla.firefox/cache/mozilla/firefox/cv70hco5.default-release"
-//!
+
 //!                 // Either GOOGLE_AUTHORIZATION_CODE environment must not be set or must be recent if using for the first time or refresh_token.txt has been deleted
 //!                 automate_login: true,
 //!                 // Relogin is scheduled at 3:30 AM IST daily.
@@ -127,20 +128,24 @@
 //!         schedule_refresh_instruments,
 //!         WSConnectConfig {
 //!             connect_portfolio_stream: false,
-//!             connect_market_data_stream: false,
+//!             connect_market_data_stream_v3: false,
 //!             portfolio_stream_update_types: None,
 //!             portfolio_feed_callback: None::<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
-//!             market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
+//!             market_data_feed_v3_callback: None::<
+//!                 Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>,
+//!             >,
 //!         },
 //!     )
 //!     .await
 //!     .unwrap();
-//!
+
 //!     // This ensures that app continues running until SIGINT occurs
 //!     tokio::select! {
+//!         _ = join_all(tasks_vec) => {}
 //!         _ = signal::ctrl_c() => {}
 //!     };
 //! }
+//!
 //!
 //! ```
 //!
@@ -151,10 +156,10 @@
 //! async fn main() {
 //!     tracing_subscriber::fmt::init();
 //!     let _ = dotenv();
-//!
+
 //!     let api_key: String = env::var(UPLINK_API_KEY_ENV).unwrap();
 //!     let (fetch_instruments, schedule_refresh_instruments) = (true, true);
-//!
+
 //!     // ApiClient which fetches instruments, schedules instruments refresh daily and stores it in ApiClient
 //!     let (api_client, tasks_vec) = ApiClient::new(
 //!         &api_key,
@@ -173,23 +178,20 @@
 //!         schedule_refresh_instruments,
 //!         WSConnectConfig {
 //!             connect_portfolio_stream: false,
-//!             connect_market_data_stream: false,
+//!             connect_market_data_stream_v3: false,
 //!             portfolio_stream_update_types: None,
 //!             portfolio_feed_callback: None::<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
-//!             market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
+//!             market_data_feed_v3_callback: None::<
+//!                 Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>,
+//!             >,
 //!         },
 //!     )
 //!     .await
 //!     .unwrap();
-//!
+
 //!     {
 //!         // Ensure that api_client mutex guard goes out of scope when no longer needed.
-//!         let api_client: MutexGuard<
-//!             ApiClient<
-//!                 Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>,
-//!                 Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>,
-//!             >,
-//!         > = api_client.lock().await;
+//!         let api_client: MutexGuard<ApiClient> = api_client.lock().await;
 //!         print!(
 //!             "{:?}",
 //!             api_client
@@ -203,9 +205,10 @@
 //!         );
 //!         std::io::stdout().flush().unwrap();
 //!     }
-//!
+
 //!     // This ensures that app continues running until SIGINT occurs
 //!     tokio::select! {
+//!         _ = join_all(tasks_vec) => {}
 //!         _ = signal::ctrl_c() => {}
 //!     };
 //! }
@@ -218,11 +221,17 @@
 //!     dotenvy::dotenv,
 //!     futures::future::join_all,
 //!     std::env,
-//!     tokio::{signal, sync::MutexGuard},
+//!     tokio::{
+//!         signal,
+//!         sync::MutexGuard,
+//!         time::{Instant, sleep},
+//!     },
+//!     tracing::info,
 //!     upstox_rust_sdk::{
 //!         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
 //!         constants::UPLINK_API_KEY_ENV,
 //!         models::{
+//!             ProductType, TransactionType,
 //!             charges::brokerage_details_request::BrokerageDetailsRequest,
 //!             success_response::SuccessResponse,
 //!             user::{
@@ -230,20 +239,20 @@
 //!                 fund_and_margin_response::FundAndMarginResponse, profile_response::ProfileResponse,
 //!             },
 //!             ws::portfolio_feed_response::PortfolioFeedResponse,
-//!             ProductType, TransactionType,
 //!         },
-//!         protos::market_data_feed::FeedResponse as MarketDataFeedResponse,
+//!         protos::market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
+//!         rate_limiter::RateLimitExceeded,
 //!     },
 //! };
-//!
+
 //! #[tokio::main]
 //! async fn main() {
 //!     tracing_subscriber::fmt::init();
 //!     let _ = dotenv();
-//!
+
 //!     let api_key: String = env::var(UPLINK_API_KEY_ENV).unwrap();
-//!     let (fetch_instruments, schedule_refresh_instruments) = (false, false);
-//!
+//!     let (fetch_instruments, schedule_refresh_instruments) = (true, false);
+
 //!     let (api_client, tasks_vec) = ApiClient::new(
 //!         &api_key,
 //!         LoginConfig {
@@ -259,32 +268,50 @@
 //!         schedule_refresh_instruments,
 //!         WSConnectConfig {
 //!             connect_portfolio_stream: false,
-//!             connect_market_data_stream: false,
+//!             connect_market_data_stream_v3: false,
 //!             portfolio_stream_update_types: None,
 //!             portfolio_feed_callback: None::<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
-//!             market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
+//!             market_data_feed_v3_callback: None::<
+//!                 Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>,
+//!             >,
 //!         },
 //!     )
 //!     .await
 //!     .unwrap();
-//!
+
 //!     {
-//!         let api_client: MutexGuard<
-//!             ApiClient<
-//!                 Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>,
-//!                 Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>,
-//!             >,
-//!         > = api_client.lock().await;
-//!
+//!         let api_client: MutexGuard<ApiClient> = api_client.lock().await;
+
 //!         // User Endpoints
-//!         let _profile: SuccessResponse<ProfileResponse> = api_client.get_profile().await.unwrap();
-//!         let _funds_and_margin: SuccessResponse<FundAndMarginResponse> = api_client
-//!             .get_fund_and_margin(Some(SegmentType::Sec))
-//!             .await
-//!             .unwrap();
-//!
+//!         let _profile: SuccessResponse<ProfileResponse> =
+//!             api_client.get_profile().await.unwrap().unwrap();
+//!         info!("Profile: {:?}", _profile);
+
 //!         // Charges Endpoints
-//!         let _charges = api_client
+//!         let _charges_result = api_client
+//!             .get_brokerage_details(BrokerageDetailsRequest {
+//!                 instrument_token: "NSE_EQ|INE806T01012".to_string(),
+//!                 quantity: 2,
+//!                 product: ProductType::I,
+//!                 transaction_type: TransactionType::Buy,
+//!                 price: 1575.00,
+//!             })
+//!             .await;
+
+//!         if let Err(e) = _charges_result {
+//!             let next_allowed_at = match e {
+//!                 RateLimitExceeded::PerSecond { next_allowed_at } => next_allowed_at,
+//!                 RateLimitExceeded::PerMinute { next_allowed_at } => next_allowed_at,
+//!                 RateLimitExceeded::PerThirtyMinutes { next_allowed_at } => next_allowed_at,
+//!             };
+//!             info!(
+//!                 "Rate limit exceeded. Sleeping for {:?}",
+//!                 next_allowed_at - Instant::now()
+//!             );
+//!             sleep(next_allowed_at - Instant::now()).await;
+//!         }
+
+//!         let charges = api_client
 //!             .get_brokerage_details(BrokerageDetailsRequest {
 //!                 instrument_token: "NSE_EQ|INE806T01012".to_string(),
 //!                 quantity: 2,
@@ -293,15 +320,27 @@
 //!                 price: 1575.00,
 //!             })
 //!             .await
+//!             .unwrap()
 //!             .unwrap();
+
+//!         info!("Charges: {:?}", charges);
+
+//!         let _funds_and_margin: SuccessResponse<FundAndMarginResponse> = api_client
+//!             .get_fund_and_margin(Some(SegmentType::Sec))
+//!             .await
+//!             .unwrap()
+//!             .unwrap();
+
+//!         // This is just for usage illustration. All endpoints in https://upstox.com/developer/api-documentation/open-api are available via the ApiClient.
 //!     }
-//!
+
 //!     // This ensures that app continues running until SIGINT occurs
 //!     tokio::select! {
 //!         _ = join_all(tasks_vec) => {}
 //!         _ = signal::ctrl_c() => {}
 //!     };
 //! }
+//!
 //! ```
 
 use {
@@ -311,6 +350,7 @@ use {
             RATE_LIMIT_PER_THIRTY_MINUTES,
         },
         models::{
+            ExchangeSegment,
             error_response::ErrorResponse,
             instruments::instruments_response::InstrumentsResponse,
             success_response::SuccessResponse,
@@ -319,15 +359,11 @@ use {
                 portfolio_feed_request::PortfolioUpdateType,
                 portfolio_feed_response::PortfolioFeedResponse,
             },
-            ExchangeSegment,
         },
-        protos::{
-            market_data_feed::FeedResponse as MarketDataFeedResponse,
-            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
-        },
+        protos::market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
         rate_limiter::{ApiRateLimiter, RateLimitExceeded},
         utils::create_url,
-        ws_client::{MarketDataFeedClient, MarketDataFeedV3Client, PortfolioFeedClient},
+        ws_client::{MarketDataFeedV3Client, PortfolioFeedClient},
     },
     chrono::FixedOffset,
     ezsockets::Client as EzClient,
@@ -352,9 +388,6 @@ pub struct ApiClient {
     pub instruments: Option<HashMap<ExchangeSegment, HashMap<String, Vec<InstrumentsResponse>>>>,
     pub portfolio_feed_client:
         Option<EzClient<PortfolioFeedClient<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>>>,
-    pub market_data_feed_client: Option<
-        EzClient<MarketDataFeedClient<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>>,
-    >,
     pub market_data_feed_v3_client: Option<
         EzClient<MarketDataFeedV3Client<Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>>>,
     >,
@@ -375,7 +408,6 @@ impl ApiClient {
             token: None,
             instruments: None,
             portfolio_feed_client: None,
-            market_data_feed_client: None,
             market_data_feed_v3_client: None,
             rate_limiter: ApiRateLimiter::new(
                 RATE_LIMIT_PER_SECOND,
@@ -416,12 +448,6 @@ impl ApiClient {
                     )
                     .await?;
                 tasks_vec.push(portfolio_feed_task);
-            }
-            if ws_connect_config.connect_market_data_stream {
-                let market_data_feed_task = api_client
-                    .connect_market_data_feed(ws_connect_config.market_data_feed_callback)
-                    .await?;
-                tasks_vec.push(market_data_feed_task);
             }
             if ws_connect_config.connect_market_data_stream_v3 {
                 let market_data_feed_v3_task = api_client
@@ -676,11 +702,9 @@ pub enum MailProvider {
 
 pub struct WSConnectConfig {
     pub connect_portfolio_stream: bool,
-    pub connect_market_data_stream: bool,
     pub connect_market_data_stream_v3: bool,
     pub portfolio_stream_update_types: Option<HashSet<PortfolioUpdateType>>,
     pub portfolio_feed_callback: Option<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
-    pub market_data_feed_callback: Option<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
     pub market_data_feed_v3_callback:
         Option<Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>>,
 }

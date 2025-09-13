@@ -1,4 +1,3 @@
-pub mod market_data_feed_message;
 pub mod market_data_feed_v3_message;
 pub mod portfolio_feed_request;
 pub mod portfolio_feed_response;

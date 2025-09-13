@@ -5,13 +5,14 @@ use {
     tokio::{
         signal,
         sync::MutexGuard,
-        time::{sleep, Instant},
+        time::{Instant, sleep},
     },
     tracing::info,
     upstox_rust_sdk::{
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
         constants::UPLINK_API_KEY_ENV,
         models::{
+            ProductType, TransactionType,
             charges::brokerage_details_request::BrokerageDetailsRequest,
             success_response::SuccessResponse,
             user::{
@@ -19,12 +20,8 @@ use {
                 fund_and_margin_response::FundAndMarginResponse, profile_response::ProfileResponse,
             },
             ws::portfolio_feed_response::PortfolioFeedResponse,
-            ProductType, TransactionType,
         },
-        protos::{
-            market_data_feed::FeedResponse as MarketDataFeedResponse,
-            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
-        },
+        protos::market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
         rate_limiter::RateLimitExceeded,
     },
 };
@@ -52,11 +49,9 @@ async fn main() {
         schedule_refresh_instruments,
         WSConnectConfig {
             connect_portfolio_stream: false,
-            connect_market_data_stream: false,
             connect_market_data_stream_v3: false,
             portfolio_stream_update_types: None,
             portfolio_feed_callback: None::<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
-            market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
             market_data_feed_v3_callback: None::<
                 Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>,
             >,

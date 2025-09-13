@@ -11,10 +11,7 @@ use {
             portfolio_feed_request::PortfolioUpdateType,
             portfolio_feed_response::PortfolioFeedResponse,
         },
-        protos::{
-            market_data_feed::FeedResponse as MarketDataFeedResponse,
-            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
-        },
+        protos::market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
         ws_client::MarketDataV3Call,
     },
 };
@@ -51,7 +48,6 @@ async fn main() {
         // Configuration to connect and handle websocket data.
         WSConnectConfig {
             connect_portfolio_stream: true,
-            connect_market_data_stream: false,
             connect_market_data_stream_v3: true,
             // Select which portfolio data to fetch
             portfolio_stream_update_types: Some(HashSet::from([
@@ -61,7 +57,6 @@ async fn main() {
             ])),
             // Handle portfolio data feed
             portfolio_feed_callback: Some(Box::new(portfolio_feed_handler)),
-            market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
             // Handle market data feed
             market_data_feed_v3_callback: Some(Box::new(market_data_feed_v3_handler)),
         },
@@ -77,7 +72,6 @@ async fn main() {
                 "NSE_INDEX|NIFTY LARGEMID250".to_string(),
                 "NSE_INDEX|Nifty Auto".to_string(),
                 "NSE_INDEX|Nifty Midcap 50".to_string(),
-                "BSE_EQ|INE053F08288".to_string(),
             ],
         }))
         .await

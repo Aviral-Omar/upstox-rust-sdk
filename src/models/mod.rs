@@ -1,5 +1,6 @@
 pub mod charges;
 pub mod error_response;
+pub mod expired_instruments;
 pub mod gtt_orders;
 pub mod historical_data;
 pub mod instruments;

@@ -3,7 +3,8 @@ use {
         client::ApiClient,
         constants::{
             APIVersion, BaseUrlType, PORTFOLIO_CONVERT_POSITIONS_ENDPOINT,
-            PORTFOLIO_HOLDINGS_ENDPOINT, PORTFOLIO_POSITIONS_ENDPOINT,
+            PORTFOLIO_HOLDINGS_ENDPOINT, PORTFOLIO_MTF_POSITIONS_ENDPOINT,
+            PORTFOLIO_POSITIONS_ENDPOINT,
         },
         models::{
             error_response::ErrorResponse,
@@ -31,6 +32,29 @@ impl ApiClient {
                 None,
                 BaseUrlType::REGULAR,
                 APIVersion::V2,
+            )
+            .await?;
+
+        Ok(match res.status().as_u16() {
+            200 => Ok(res
+                .json::<SuccessResponse<Vec<PositionsResponse>>>()
+                .await
+                .unwrap()),
+            _ => Err(res.json::<ErrorResponse>().await.unwrap()),
+        })
+    }
+
+    pub async fn get_mtf_positions(
+        &self,
+    ) -> Result<Result<SuccessResponse<Vec<PositionsResponse>>, ErrorResponse>, RateLimitExceeded>
+    {
+        let res: reqwest::Response = self
+            .get(
+                PORTFOLIO_MTF_POSITIONS_ENDPOINT,
+                true,
+                None,
+                BaseUrlType::REGULAR,
+                APIVersion::V3,
             )
             .await?;
 

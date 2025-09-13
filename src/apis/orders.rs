@@ -7,7 +7,7 @@ use {
             ORDERS_MODIFY_ORDER_ENDPOINT, ORDERS_ORDER_BOOK_ENDPOINT,
             ORDERS_ORDER_DETAILS_ENDPOINT, ORDERS_ORDER_HISTORY_ENDPOINT,
             ORDERS_ORDER_TRADES_ENDPOINT, ORDERS_PLACE_MULTI_ORDER_ENDPOINT,
-            ORDERS_PLACE_ORDER_ENDPOINT, ORDERS_TRADES_ENDPOINT, ORDERS_TRADE_HISTORY_ENDPOINT,
+            ORDERS_PLACE_ORDER_ENDPOINT, ORDERS_TRADE_HISTORY_ENDPOINT, ORDERS_TRADES_ENDPOINT,
         },
         models::{
             error_response::ErrorResponse,
@@ -37,6 +37,7 @@ use {
 };
 
 impl ApiClient {
+    #[deprecated(note = "Use place_order_v3 instead")]
     pub async fn place_order(
         &self,
         place_order_body: PlaceOrderRequest,
@@ -122,6 +123,7 @@ impl ApiClient {
         })
     }
 
+    #[deprecated(note = "Use modify_order_v3 instead")]
     pub async fn modify_order(
         &self,
         modify_order_body: ModifyOrderRequest,
@@ -176,6 +178,7 @@ impl ApiClient {
         })
     }
 
+    #[deprecated(note = "Use cancel_order_v3 instead")]
     pub async fn cancel_order(
         &self,
         order_id: String,

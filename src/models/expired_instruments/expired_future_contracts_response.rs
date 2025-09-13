@@ -6,12 +6,11 @@ use {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum InstrumentType {
-    CE,
-    PE,
+    FUT,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct OptionContractsResponse {
+pub struct ExpiredFutureContractsResponse {
     pub name: String,
     pub segment: ExchangeSegment,
     pub exchange: Exchange,
@@ -26,7 +25,5 @@ pub struct OptionContractsResponse {
     pub underlying_key: String,
     pub underlying_type: AssetType,
     pub underlying_symbol: String,
-    pub strike_price: f64,
     pub minimum_lot: f64,
-    pub weekly: bool,
 }

@@ -48,16 +48,26 @@ pub(super) const HISTORICAL_CANDLE_DATA_ENDPOINT: &str = "/historical-candle";
 pub(super) const HISTORICAL_CANDLE_INTRADAY_DATA_ENDPOINT: &str = "/historical-candle/intraday";
 
 pub(super) const PORTFOLIO_POSITIONS_ENDPOINT: &str = "/portfolio/short-term-positions";
+pub(super) const PORTFOLIO_MTF_POSITIONS_ENDPOINT: &str = "/portfolio/mtf-positions";
 pub(super) const PORTFOLIO_CONVERT_POSITIONS_ENDPOINT: &str = "/portfolio/convert-position";
 pub(super) const PORTFOLIO_HOLDINGS_ENDPOINT: &str = "/portfolio/long-term-holdings";
 
 pub(super) const MARKET_QUOTE_FULL_ENDPOINT: &str = "/market-quote/quotes";
 pub(super) const MARKET_QUOTE_OHLC_ENDPOINT: &str = "/market-quote/ohlc";
 pub(super) const MARKET_QUOTE_LTP_ENDPOINT: &str = "/market-quote/ltp";
+pub(super) const MARKET_QUOTE_OPTION_GREEKS_ENDPOINT: &str = "/market-quote/option-greek";
 
 pub(super) const MARKET_INFO_HOLIDAYS_ENDPOINT: &str = "/market/holidays";
 pub(super) const MARKET_INFO_TIMINGS_ENDPOINT: &str = "/market/timings";
 pub(super) const MARKET_INFO_EXCHANGE_STATUS_ENDPOINT: &str = "/market/status";
+
+pub(super) const EXPIRED_INSTRUMENTS_EXPIRIES_ENDPOINT: &str = "/expired-instruments/expiries";
+pub(super) const EXPIRED_INSTRUMENTS_EXPIRED_OPTION_CONTRACTS_ENDPOINT: &str =
+    "/expired-instruments/option/contract";
+pub(super) const EXPIRED_INSTRUMENTS_EXPIRED_FUTURE_CONTRACTS_ENDPOINT: &str =
+    "/expired-instruments/future/contract";
+pub(super) const EXPIRED_INSTRUMENTS_EXPIRED_HISTORICAL_CANDLE_DATA_ENDPOINT: &str =
+    "/expired-instruments/historical-candle";
 
 pub(super) const OPTION_CONTRACTS_ENDPOINT: &str = "/option/contract";
 pub(super) const OPTION_CHAIN_ENDPOINT: &str = "/option/chain";

@@ -6,9 +6,9 @@ pub mod modify_gtt_order_request;
 pub mod place_gtt_order_request;
 
 use {
-    crate::models::ProductType,
+    crate::models::{ProductType, TransactionType},
     serde::{Deserialize, Serialize},
-    serde_valid::{validation::Error, Validate},
+    serde_valid::{Validate, validation::Error},
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -44,6 +44,7 @@ pub enum GTTOrderTriggerType {
 }
 
 #[derive(Serialize, Debug, Validate)]
+#[validate(custom = |s| validate_trailing_gap(&s.strategy, &s.trailing_gap))]
 pub struct GTTOrderRule {
     pub strategy: GTTRuleStrategy,
     pub trigger_type: GTTOrderTriggerType,
@@ -52,11 +53,46 @@ pub struct GTTOrderRule {
         message = "trigger_price must be greater than 0.0"
     )]
     pub trigger_price: f64,
+    pub trailing_gap: Option<f64>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GTTOrderDetailsRule {
+    pub strategy: GTTRuleStrategy,
+    pub status: GTTRuleStatus,
+    pub trigger_type: GTTOrderTriggerType,
+    pub trigger_price: f64,
+    pub transaction_type: TransactionType,
+    pub message: String,
+    pub order_id: Option<String>,
+    pub trailing_gap: Option<f64>,
+}
+
+fn validate_trailing_gap(
+    strategy: &GTTRuleStrategy,
+    trailing_gap: &Option<f64>,
+) -> Result<(), Error> {
+    match strategy {
+        GTTRuleStrategy::StopLoss => match trailing_gap {
+            Some(_) => Ok(()),
+            None => Err(Error::Custom(
+                "trailing_gap must be present for StopLoss strategy".to_string(),
+            )),
+        },
+        GTTRuleStrategy::Entry | GTTRuleStrategy::Target => match trailing_gap {
+            None => Ok(()),
+            Some(_) => Err(Error::Custom(
+                "trailing_gap must not be present for Entry or Target strategy".to_string(),
+            )),
+        },
+    }
 }
 
 pub(super) fn validate_product_type(product: &ProductType) -> Result<(), Error> {
     match product {
-        ProductType::I | ProductType::D => Ok(()),
-        _ => Err(Error::Custom("product_type must be I or D".to_string())),
+        ProductType::I | ProductType::D | ProductType::MTF => Ok(()),
+        _ => Err(Error::Custom(
+            "product_type must be I or D or MTF".to_string(),
+        )),
     }
 }

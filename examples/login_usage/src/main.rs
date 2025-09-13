@@ -7,10 +7,7 @@ use {
         client::{ApiClient, AutomateLoginConfig, LoginConfig, MailProvider, WSConnectConfig},
         constants::UPLINK_API_KEY_ENV,
         models::ws::portfolio_feed_response::PortfolioFeedResponse,
-        protos::{
-            market_data_feed::FeedResponse as MarketDataFeedResponse,
-            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
-        },
+        protos::market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
     },
 };
 
@@ -44,11 +41,9 @@ async fn main() {
         schedule_refresh_instruments,
         WSConnectConfig {
             connect_portfolio_stream: false,
-            connect_market_data_stream: false,
             connect_market_data_stream_v3: false,
             portfolio_stream_update_types: None,
             portfolio_feed_callback: None::<Box<dyn FnMut(PortfolioFeedResponse) + Send + Sync>>,
-            market_data_feed_callback: None::<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
             market_data_feed_v3_callback: None::<
                 Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>,
             >,

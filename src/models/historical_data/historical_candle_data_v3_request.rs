@@ -1,0 +1,27 @@
+use {
+    crate::models::historical_data::{Unit, validate_interval},
+    serde::Serialize,
+    serde_valid::Validate,
+};
+
+#[derive(Serialize, Debug, Validate)]
+#[validate(custom = |s| validate_interval(&s.unit, &s.interval))]
+pub struct HistoricalCandleDataV3Request {
+    #[validate(
+        pattern = r"^(?:^NSE_EQ|NSE_FO|NCD_FO|BSE_EQ|BSE_FO|BCD_FO|MCX_FO|NSE_INDEX|BSE_INDEX|MCX_INDEX)\|[\w ]+(,(?:NSE_EQ|NSE_FO|NCD_FO|BSE_EQ|BSE_FO|BCD_FO|MCX_FO|NSE_INDEX|BSE_INDEX|MCX_INDEX)\|[\w ]+)*?$",
+        message = "Invalid instrument_key"
+    )]
+    pub instrument_key: String,
+    pub unit: Unit,
+    pub interval: String,
+    #[validate(
+        pattern = r"^\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])$",
+        message = "to_date format must be yyyy-mm-dd"
+    )]
+    pub to_date: String,
+    #[validate(
+        pattern = r"^\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])$",
+        message = "from_date format must be yyyy-mm-dd"
+    )]
+    pub from_date: Option<String>,
+}

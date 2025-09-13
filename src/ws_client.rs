@@ -9,19 +9,15 @@ use {
             error_response::ErrorResponse,
             success_response::SuccessResponse,
             ws::{
-                market_data_feed_message::{MarketDataFeedMessage, MessageData, MethodType},
+                AuthorizeFeedResponse,
                 market_data_feed_v3_message::{
                     MarketDataFeedV3Message, MessageDataV3, MethodTypeV3,
                 },
                 portfolio_feed_request::PortfolioUpdateType,
                 portfolio_feed_response::PortfolioFeedResponse,
-                AuthorizeFeedResponse,
             },
         },
-        protos::{
-            market_data_feed::FeedResponse as MarketDataFeedResponse,
-            market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
-        },
+        protos::market_data_feed_v3::FeedResponse as MarketDataFeedV3Response,
         rate_limiter::RateLimitExceeded,
     },
     async_trait::async_trait,
@@ -29,7 +25,7 @@ use {
     protobuf::Message,
     reqwest::Url,
     serde_json,
-    std::collections::{hash_set, HashSet},
+    std::collections::{HashSet, hash_set},
     tokio::task::JoinHandle,
 };
 
@@ -37,15 +33,6 @@ use {
 pub struct PortfolioFeedClient<F>
 where
     F: FnMut(PortfolioFeedResponse) + Send + Sync + 'static,
-{
-    pub handle: EzClient<Self>,
-    callback: Option<F>,
-}
-
-#[derive(Debug)]
-pub struct MarketDataFeedClient<F>
-where
-    F: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
 {
     pub handle: EzClient<Self>,
     callback: Option<F>,
@@ -80,48 +67,6 @@ where
     }
 
     async fn on_call(&mut self, _: Self::Call) -> Result<(), EzError> {
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl<F> ClientExt for MarketDataFeedClient<F>
-where
-    F: FnMut(MarketDataFeedResponse) + Send + Sync + 'static,
-{
-    type Call = MarketDataCall;
-
-    async fn on_text(&mut self, _: Utf8Bytes) -> Result<(), EzError> {
-        Ok(())
-    }
-
-    async fn on_binary(&mut self, binary_data: Bytes) -> Result<(), EzError> {
-        if let Some(callback) = &mut self.callback {
-            let data: MarketDataFeedResponse =
-                MarketDataFeedResponse::parse_from_bytes(&binary_data)?;
-            callback(data);
-        }
-        Ok(())
-    }
-
-    async fn on_call(&mut self, call: Self::Call) -> Result<(), EzError> {
-        let market_data_feed_message: MarketDataFeedMessage = MarketDataFeedMessage {
-            guid: "someguid".to_string(),
-            method: match call {
-                MarketDataCall::SubscribeInstrument(_) => MethodType::Sub,
-                MarketDataCall::ChangeMode(_) => MethodType::ChangeMode,
-                MarketDataCall::UnsubscribeInstrument(_) => MethodType::Unsub,
-            },
-            data: match call {
-                MarketDataCall::SubscribeInstrument(data) => data,
-                MarketDataCall::ChangeMode(data) => data,
-                MarketDataCall::UnsubscribeInstrument(data) => data,
-            },
-        };
-
-        let message_text: String = serde_json::to_string(&market_data_feed_message).unwrap();
-        let message_binary: Vec<u8> = message_text.into_bytes();
-        self.handle.binary(message_binary)?;
         Ok(())
     }
 }
@@ -194,29 +139,6 @@ impl ApiClient {
         Ok(feed_future)
     }
 
-    pub async fn connect_market_data_feed(
-        &mut self,
-        callback: Option<Box<dyn FnMut(MarketDataFeedResponse) + Send + Sync>>,
-    ) -> Result<JoinHandle<()>, String> {
-        let authorized_url: String = self
-            .get_authorized_market_data_feed_endpoint()
-            .await
-            .unwrap()
-            .map_err(|_| "Failed to fetch Market Data Feed WS URL".to_string())?
-            .data
-            .authorized_redirect_uri;
-
-        let config: ClientConfig = ClientConfig::new(Url::parse(&authorized_url).unwrap());
-        let (handle, future) =
-            ezsockets::connect(|handle| MarketDataFeedClient { handle, callback }, config).await;
-        self.market_data_feed_client = Some(handle);
-
-        let feed_future: JoinHandle<()> = tokio::spawn(async move {
-            future.await.unwrap();
-        });
-        Ok(feed_future)
-    }
-
     pub async fn connect_market_data_feed_v3(
         &mut self,
         callback: Option<Box<dyn FnMut(MarketDataFeedV3Response) + Send + Sync>>,
@@ -238,16 +160,6 @@ impl ApiClient {
             future.await.unwrap();
         });
         Ok(feed_future)
-    }
-
-    pub async fn send_market_data_feed_message(
-        &self,
-        market_data_feed_message: MarketDataCall,
-    ) -> Result<(), EzError> {
-        if let Some(client) = &self.market_data_feed_client {
-            client.call(market_data_feed_message)?;
-        }
-        Ok(())
     }
 
     pub async fn send_market_data_feed_v3_message(
@@ -301,29 +213,6 @@ impl ApiClient {
         })
     }
 
-    pub async fn get_authorized_market_data_feed_endpoint(
-        &self,
-    ) -> Result<Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse>, RateLimitExceeded>
-    {
-        let res: reqwest::Response = self
-            .get(
-                WS_MARKET_DATA_FEED_AUTHORIZE_ENDPOINT,
-                true,
-                None,
-                BaseUrlType::REGULAR,
-                APIVersion::V2,
-            )
-            .await?;
-
-        Ok(match res.status().as_u16() {
-            200 => Ok(res
-                .json::<SuccessResponse<AuthorizeFeedResponse>>()
-                .await
-                .unwrap()),
-            _ => Err(res.json::<ErrorResponse>().await.unwrap()),
-        })
-    }
-
     pub async fn get_authorized_market_data_feed_v3_endpoint(
         &self,
     ) -> Result<Result<SuccessResponse<AuthorizeFeedResponse>, ErrorResponse>, RateLimitExceeded>
@@ -346,14 +235,6 @@ impl ApiClient {
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),
         })
     }
-}
-
-#[derive(Debug)]
-pub enum MarketDataCall {
-    SubscribeInstrument(MessageData),
-    ChangeMode(MessageData),
-    UnsubscribeInstrument(MessageData),
-    // Add other calls as needed
 }
 
 #[derive(Debug)]

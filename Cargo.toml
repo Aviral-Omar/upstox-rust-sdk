@@ -1,35 +1,35 @@
 [package]
 name = "upstox-rust-sdk"
 version = "0.3.0"
-edition = "2021"
+edition = "2024"
 authors = ["Aviral Omar", "aviralomar0301@gmail.com"]
 categories = ["api-bindings", "asynchronous"]
-description = "SDK to access Upstox's Uplink v2 APIs programmatically"
+description = "SDK to access Upstox's Uplink APIs programmatically"
 keywords = ["upstox", "uplink", "sdk"]
 license = "MPL-2.0"
 readme = "README.md"
 repository = "https://github.com/Aviral-Omar/upstox-rust-sdk"
 
 [dependencies]
-async-imap = { version = "0.10.3", default-features = false, features = ["runtime-tokio"] }
+async-imap = { version = "0.11.1", default-features = false, features = ["runtime-tokio"] }
 async-native-tls = { version = "0.5.0", default-features = false, features = ["runtime-tokio"] }
-async-trait = "0.1.88"
-chrono = "0.4.40"
+async-trait = "0.1.89"
+chrono = "0.4.42"
 ezsockets = { version = "0.7.0", features = ["native-tls"] }
-fantoccini = "0.21.5"
-flate2 = "1.1.0"
+fantoccini = "0.22.0"
+flate2 = "1.1.2"
 futures = "0.3.31"
 mailparse = "0.16.1"
 protobuf = "3.7.2"
-regex = "1.11.1"
-reqwest = { version = "0.12.15", features = ["json"] }
-scraper = "0.23.1"
+regex = "1.11.2"
+reqwest = { version = "0.12.23", features = ["json"] }
+scraper = "0.24.0"
 serde = "1.0.219"
-serde_json = "1.0.140"
+serde_json = "1.0.143"
 serde_valid = "1.0.5"
-serde_with = "3.12.0"
-tokio = { version = "1.44.1", features = ["full"] }
-tokio-cron-scheduler = { version = "0.13.0", features = ["signal"]}
+serde_with = "3.14.0"
+tokio = { version = "1.47.1", features = ["full"] }
+tokio-cron-scheduler = { version = "0.14.0", features = ["signal"]}
 tracing = "0.1.41"
 url_open = "0.0.2"
 urlencoding = "2.1.3"

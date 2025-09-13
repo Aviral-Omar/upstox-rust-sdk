@@ -6,7 +6,7 @@ use {
             error_response::ErrorResponse,
             option_chain::{
                 option_contracts_request::OptionContractsRequest,
-                option_contracts_response::OptionContractResponse,
+                option_contracts_response::OptionContractsResponse,
                 put_call_option_chain_request::OptionChainRequest,
                 put_call_option_chain_response::OptionChainResponse,
             },
@@ -23,7 +23,7 @@ impl ApiClient {
         &self,
         option_contracts_params: OptionContractsRequest,
     ) -> Result<
-        Result<SuccessResponse<Vec<OptionContractResponse>>, ErrorResponse>,
+        Result<SuccessResponse<Vec<OptionContractsResponse>>, ErrorResponse>,
         RateLimitExceeded,
     > {
         option_contracts_params.validate().unwrap();
@@ -40,7 +40,7 @@ impl ApiClient {
 
         Ok(match res.status().as_u16() {
             200 => Ok(res
-                .json::<SuccessResponse<Vec<OptionContractResponse>>>()
+                .json::<SuccessResponse<Vec<OptionContractsResponse>>>()
                 .await
                 .unwrap()),
             _ => Err(res.json::<ErrorResponse>().await.unwrap()),

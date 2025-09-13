@@ -17,7 +17,7 @@ pub struct Depth {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct FullMarketQuoteResponse {
+pub struct FullMarketQuotesResponse {
     pub ohlc: OHLC,
     pub depth: Depth,
     pub timestamp: String,

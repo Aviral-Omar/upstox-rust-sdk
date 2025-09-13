@@ -1,21 +1,10 @@
 use {
     crate::models::{
-        gtt_orders::{GTTOrderTriggerType, GTTOrderType, GTTRuleStatus, GTTRuleStrategy},
-        ProductType, TransactionType,
+        ProductType,
+        gtt_orders::{GTTOrderDetailsRule, GTTOrderType},
     },
     serde::{Deserialize, Serialize},
 };
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct GTTOrderDetailsRule {
-    pub strategy: GTTRuleStrategy,
-    pub status: GTTRuleStatus,
-    pub trigger_type: GTTOrderTriggerType,
-    pub trigger_price: f64,
-    pub transaction_type: TransactionType,
-    pub message: String,
-    pub order_id: Option<String>,
-}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GTTOrderDetailsResponse {

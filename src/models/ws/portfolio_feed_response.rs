@@ -1,8 +1,9 @@
 use {
     crate::models::{
+        Exchange, ExchangeSegment, OrderStatus, OrderVariety, ProductType, TransactionType,
+        gtt_orders::{GTTOrderDetailsRule, GTTOrderType},
         orders::{OrderType, ValidityType},
         ws::portfolio_feed_request::PortfolioUpdateType,
-        Exchange, ExchangeSegment, OrderStatus, OrderVariety, ProductType, TransactionType,
     },
     serde::{Deserialize, Serialize},
 };
@@ -12,6 +13,17 @@ use {
 pub enum PortfolioFeedResponse {
     GTTOrderData {
         update_type: PortfolioUpdateType,
+        #[serde(rename = "type")]
+        gtt_order_type: GTTOrderType,
+        exchange: String,
+        quantity: u32,
+        product: ProductType,
+        instrument_token: String,
+        trading_symbol: String,
+        gtt_order_id: String,
+        expires_at: u64,
+        created_at: u64,
+        rules: Vec<GTTOrderDetailsRule>,
     },
     HoldingData {
         update_type: PortfolioUpdateType,
