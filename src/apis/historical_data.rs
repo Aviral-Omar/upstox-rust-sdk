@@ -31,10 +31,12 @@ impl ApiClient {
         let res: reqwest::Response = self
             .get(
                 format!(
-                    "{}/{}/{:?}/{}/{}/{}",
+                    "{}/{}/{}/{}/{}/{}",
                     HISTORICAL_CANDLE_DATA_ENDPOINT,
                     historical_candles_v3_path_params.instrument_key,
-                    historical_candles_v3_path_params.unit,
+                    serde_json::to_string(&historical_candles_v3_path_params.unit)
+                        .unwrap()
+                        .trim_matches('"'),
                     historical_candles_v3_path_params.interval,
                     historical_candles_v3_path_params.to_date,
                     match historical_candles_v3_path_params.from_date {
@@ -68,10 +70,12 @@ impl ApiClient {
         let res: reqwest::Response = self
             .get(
                 format!(
-                    "{}/{}/{:?}/{}",
+                    "{}/{}/{}/{}",
                     HISTORICAL_CANDLE_INTRADAY_DATA_ENDPOINT,
                     intraday_candles_v3_path_params.instrument_key,
-                    intraday_candles_v3_path_params.unit,
+                    serde_json::to_string(&intraday_candles_v3_path_params.unit)
+                        .unwrap()
+                        .trim_matches('"'),
                     intraday_candles_v3_path_params.interval,
                 )
                 .as_str(),
